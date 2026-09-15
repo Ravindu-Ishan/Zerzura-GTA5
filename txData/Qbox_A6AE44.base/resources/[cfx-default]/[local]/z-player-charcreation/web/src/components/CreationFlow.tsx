@@ -184,20 +184,34 @@ export default function CreationFlow() {
         </>
       }
     >
-      <div className="panel anim-rise flex h-[660px] max-h-full w-[860px] flex-col">
-        {/* ---- panel header ---- */}
-        <div className="flex items-end justify-between gap-6 border-b border-hairline px-6 pt-5 pb-4">
-          <div>
-            <div className="t-eyebrow">New Resident</div>
-            <h1 className="t-display mt-2 text-[27px] leading-none">Character Creator</h1>
+      {/* WIDTH IS LOAD-BEARING: 860px is the widest footprint on any screen, and
+          Config.PreviewCamera.screenShift (0.42) in client/config.lua is tuned against exactly
+          this number so the 3D ped clears it on the right of a 1920-wide display. Changing it
+          means retuning that value - see the comment above it. Still 860 after this rebuild:
+          the screen got TALLER and lost its enclosure, it did not get wider.
+
+          There is deliberately no single wrapper surface here. This is a gapped stack of
+          separate flat blocks - header plate, tab strip, body, action row - exactly like
+          SelectScreen. Wrapping it in one .panel is what made it read as a form on a
+          background instead of part of the game. */}
+      <div className="anim-rise flex h-full w-[860px] flex-col gap-2.5">
+        {/* ---- header plate ----
+            Flat navy band + its own lighter underline strip, matching the reference's
+            "SELECT CHARACTER" plate - and identical to the one SelectScreen uses. */}
+        <div className="shrink-0">
+          <div className="band flex items-center justify-between gap-6 px-6 py-4">
+            <h1 className="t-display text-[28px] leading-none text-white">Character Creator</h1>
+            <Button variant="ghost" size="sm" icon="back" onClick={cancel}>
+              Back to Roster
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" icon="back" onClick={cancel}>
-            Back to Roster
-          </Button>
+          <div className="band-underline" />
         </div>
 
-        {/* ---- tab bar ---- */}
-        <div className="scroll-thin flex items-center gap-1 overflow-x-auto border-b border-hairline px-4 py-2.5">
+        {/* ---- tab strip ----
+            Its own block now rather than a rule drawn inside the old enclosure. Flat segments
+            with an accent underline on the active one - no pills, no floating white capsule. */}
+        <div className="panel scroll-thin flex shrink-0 items-center overflow-x-auto px-3">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -208,14 +222,16 @@ export default function CreationFlow() {
               <Icon name={t.icon} size={14} />
               {t.label}
               {t.id === "details" && !detailsComplete && (
-                <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-danger shadow-[0_0_8px_rgba(255,85,102,.9)]" />
+                <span className="ml-0.5 h-[5px] w-[5px] shrink-0 bg-danger" />
               )}
             </button>
           ))}
         </div>
 
-        {/* ---- tab body ---- */}
-        <div className="flex min-h-0 flex-1 flex-col p-5">
+        {/* ---- tab body ----
+            No padding and no surface of its own: each tab renders through TabLayout, whose
+            nav rail and content pane are now their own blocks and carry their own padding. */}
+        <div className="flex min-h-0 flex-1 flex-col">
           {tab === "details" && (
             <DetailsTab details={details} onChange={setDetails} onGenderChange={onGenderChange} />
           )}
@@ -242,18 +258,25 @@ export default function CreationFlow() {
           {tab === "tattoos" && <TattoosTab applied={tattoos} onChange={onTattoosChange} />}
         </div>
 
-        {/* ---- action bar ---- */}
-        <div className="flex items-center gap-3 border-t border-hairline px-5 py-4">
+        {/* ---- action row ----
+            Same shape as SelectScreen's: the buttons are solid self-contained blocks, so they
+            sit straight on the game world with no bar behind them. Only the status line needs
+            a surface of its own - a 12px sentence over a bright scene is unreadable - so it
+            gets a height-matched block. Severity colour-coding is unchanged: muted neutral,
+            then the teal primary confirm hard against the right edge. */}
+        <div className="flex shrink-0 items-center gap-2.5">
           {error ? (
-            <p className="anim-fade flex min-w-0 flex-1 items-center gap-2 text-[12.5px] text-danger">
-              <Icon name="alert" size={15} />
+            <p className="panel anim-fade flex h-10 min-w-0 flex-1 items-center gap-2 border-l-[3px] border-danger px-4 text-[12.5px] text-danger">
+              <Icon name="alert" size={15} className="shrink-0" />
               <span className="truncate">{error}</span>
             </p>
           ) : (
-            <p className="min-w-0 flex-1 truncate text-[12px] text-white/35">
-              {detailsComplete
-                ? "Looking good. Create when you're happy with the mirror."
-                : "Fill in the Details tab to unlock character creation."}
+            <p className="panel flex h-10 min-w-0 flex-1 items-center px-4 text-[12.5px] text-white/45">
+              <span className="truncate">
+                {detailsComplete
+                  ? "Looking good. Create when you're happy with the mirror."
+                  : "Fill in the Details tab to unlock character creation."}
+              </span>
             </p>
           )}
           <Button variant="ghost" icon="x" onClick={cancel}>

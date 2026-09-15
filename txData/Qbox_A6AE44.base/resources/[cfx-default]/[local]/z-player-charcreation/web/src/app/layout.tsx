@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Oswald, Barlow } from "next/font/google";
+import { Barlow_Condensed, Barlow } from "next/font/google";
 import "./globals.css";
 
 /* next/font resolves these at BUILD time and emits real .woff2 files into the static
@@ -10,9 +10,14 @@ import "./globals.css";
    Do NOT replace this with a <link href="fonts.googleapis.com"> - that would be a runtime
    fetch and would silently fall back to a system font in-game. */
 
-/* Oswald: bold condensed grotesque - the header/label voice. Close in spirit to GTA's own
-   condensed UI type without being a vanilla GTA Online reskin. */
-const display = Oswald({
+/* Barlow Condensed: the header/label voice. Replaces Oswald, which was too tall/narrow and
+   too "editorial" - its long ascenders and open apertures read as a magazine headline face.
+   Barlow Condensed at 600/700 is squarer and more mechanical, much closer to the heavy
+   condensed caps GTA uses in its own HUD, and it is the true condensed cut of the Barlow
+   family used below - so the two are a real type pairing rather than two unrelated Google
+   fonts bolted together. It is also narrower than Oswald at the same size, which only ever
+   gives labels MORE room, never less. */
+const display = Barlow_Condensed({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-display-face",

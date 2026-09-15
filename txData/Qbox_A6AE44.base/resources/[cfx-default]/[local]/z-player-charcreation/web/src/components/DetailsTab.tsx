@@ -26,7 +26,7 @@ function Field({
     <label className="block">
       <span className="t-label mb-1.5 flex items-center gap-1.5">
         {label}
-        {!filled && <span className="h-1 w-1 rounded-full bg-danger/80" />}
+        {!filled && <span className="h-[4px] w-[4px] shrink-0 bg-danger" />}
       </span>
       {children}
       {hint && <span className="mt-1 block text-[11px] text-white/25">{hint}</span>}
@@ -113,7 +113,7 @@ export default function DetailsTab({ details, onChange, onGenderChange }: Detail
                   }}
                 >
                   <span
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg border ${
+                    className={`grid h-9 w-9 shrink-0 place-items-center border ${
                       active
                         ? "border-accent/50 bg-accent/15 text-accent"
                         : "border-white/10 bg-black/40 text-white/45"

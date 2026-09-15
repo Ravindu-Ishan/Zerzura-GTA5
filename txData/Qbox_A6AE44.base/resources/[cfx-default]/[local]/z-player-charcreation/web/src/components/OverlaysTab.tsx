@@ -98,7 +98,7 @@ export default function OverlaysTab({ overlays, overlayMax, onChange }: Overlays
       }
     >
       {styleMax === 0 ? (
-        <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-[12px] leading-snug text-white/40">
+        <p className="border-l-[3px] border-white/20 bg-black/35 px-3 py-2.5 text-[12px] leading-snug text-white/40">
           The game reports no variations of this overlay for the current ped model.
         </p>
       ) : (
@@ -133,7 +133,7 @@ export default function OverlaysTab({ overlays, overlayMax, onChange }: Overlays
       )}
 
       {styleMax > 0 && setting.opacity === 0 && (
-        <p className="mt-3 flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/[0.07] px-3 py-2.5 text-[12px] leading-snug text-white/55">
+        <p className="mt-3 flex items-start gap-2 border-l-[3px] border-accent bg-accent/[0.1] px-3 py-2.5 text-[12px] leading-snug text-white/60">
           <Icon name="alert" size={14} className="mt-[1px] shrink-0 text-accent" />
           Opacity is at zero, so this overlay is invisible on the ped. Raise it to see the style
           you&apos;ve picked.

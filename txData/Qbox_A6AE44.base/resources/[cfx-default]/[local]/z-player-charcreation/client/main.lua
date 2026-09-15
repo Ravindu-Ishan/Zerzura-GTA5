@@ -14,28 +14,87 @@ local function toClientCharacter(character)
 end
 
 local previewCam
-local hiddenPantsBackup
 
 ---True while the select screen has nothing to preview (a brand-new account with zero
 ---characters). See openSelectScreen() for why we hide the ped rather than invent one.
 local previewPedHidden = false
 
----Freemode legs are component 4. Temporarily swaps to bare legs (drawable 0, the model's own
----default/underwear state) so leg tattoos are actually visible under normal trousers, restoring
----whatever was equipped the moment we're not looking at a leg anymore.
----@param visible boolean
-local function setLegsVisible(visible)
+--[[
+  What "bare" actually looks like on a freemode ped - per component, per gender.
+
+  IT IS NOT DRAWABLE 0. That was the entire bug, twice over. illenium-appearance calls
+  SetPedDefaultComponentVariation on every model swap (game/util.lua:198-199), and the freemode
+  DEFAULT variation is drawable 0 on every component - which *is* the white t-shirt and jeans the
+  player was looking at. So the old code backed up {drawable=0} and wrote 0 straight back: a
+  literal no-op on the creation ped. Adding component 3 to that list changed nothing because the
+  drawable, not the component list, was wrong.
+
+  These numbers are copied verbatim from illenium's own strip-the-ped routine - removeClothes
+  (game/customization.lua:520-523) writes constants.DATA_CLOTHES[type].components[male|female] as
+  {componentId, bareDrawable} pairs (game/constants.lua:289-338). That table is the only verified
+  source for these ids in this repo; nothing here is recalled or inferred. Palette 2 and texture 0
+  mirror that same call.
+
+  Two entries are not in illenium's table: 9 (vest/body armour) and 1 (mask) - component ids per
+  outfits.lua:40 and constants.lua:261. For both, 0 genuinely is "none", so they are no-op
+  insurance that armour can't hide a torso tattoo and a mask can't hide a head one.
+]]
+local UNDRESS_DRAWABLES = {
+    male   = { [1] = 0, [3] = 15, [4] = 61, [5] = 0, [6] = 34, [8] = 15, [9] = 0, [10] = 0, [11] = 252 },
+    female = { [1] = 0, [3] = 15, [4] = 15, [5] = 0, [6] = 35, [8] = 14, [9] = 0, [10] = 0, [11] = 15 },
+}
+
+---nil while dressed; while undressed, the per-component {drawable, texture} to put back.
+local componentBackup
+---Which ped model the backup was taken from - a model swap invalidates it (see below).
+local undressedModel
+
+---Strips the ped to that bare state for the whole time the Tattoos tab is open - every zone needs
+---it, not just whichever one is focused, so this is a tab-wide on/off rather than something
+---setCameraFocus toggles per zone. Restores what was equipped the moment the tab closes. Safe and
+---idempotent - call it as often as needed.
+---@param undressed boolean
+local function setPreviewUndressed(undressed)
     local ped = PlayerPedId()
-    if not visible then
-        if hiddenPantsBackup then return end
-        hiddenPantsBackup = {
-            drawable = GetPedDrawableVariation(ped, 4),
-            texture = GetPedTextureVariation(ped, 4),
-        }
-        SetPedComponentVariation(ped, 4, 0, 0, 0)
-    elseif hiddenPantsBackup then
-        SetPedComponentVariation(ped, 4, hiddenPantsBackup.drawable, hiddenPantsBackup.texture, 0)
-        hiddenPantsBackup = nil
+    local model = GetEntityModel(ped)
+
+    if undressed then
+        if componentBackup then return end
+
+        -- Gender test mirrors illenium's getPedDecorationType (game/util.lua:156-163). We repeat
+        -- it rather than call it because it only exists in their internal `client` table, not in
+        -- their exports list (game/util.lua:395-413).
+        local bare = model == `mp_f_freemode_01` and UNDRESS_DRAWABLES.female or UNDRESS_DRAWABLES.male
+
+        componentBackup = {}
+        undressedModel = model
+
+        for component, drawable in pairs(bare) do
+            componentBackup[component] = {
+                drawable = GetPedDrawableVariation(ped, component),
+                texture = GetPedTextureVariation(ped, component),
+            }
+            SetPedComponentVariation(ped, component, drawable, 0, 2)
+
+            -- Read back instead of trusting the write. An out-of-range drawable is rejected
+            -- silently, and male torso2 252 in particular only exists if the DLC that ships it is
+            -- streaming. If want ~= got on a line here, that component is the one still dressed -
+            -- which is exactly the evidence the last two attempts at this bug were missing.
+            print(('[undress] comp=%d want=%d got=%d was=%d count=%d'):format(
+                component, drawable, GetPedDrawableVariation(ped, component),
+                componentBackup[component].drawable, GetNumberOfPedDrawableVariations(ped, component)))
+        end
+    elseif componentBackup then
+        -- A model swap destroys the ped and default-dresses the replacement (util.lua:194-199),
+        -- so drawables backed up off the old body mean nothing on the new one - drop them rather
+        -- than paint them onto a ped that never wore them.
+        if model == undressedModel then
+            for component, backup in pairs(componentBackup) do
+                SetPedComponentVariation(ped, component, backup.drawable, backup.texture, 2)
+            end
+        end
+        componentBackup = nil
+        undressedModel = nil
     end
 end
 
@@ -61,7 +120,7 @@ local function destroyPreviewCam()
 
     DisplayRadar(true)
     previewCam = nil
-    setLegsVisible(true)
+    setPreviewUndressed(false)
 end
 
 --[[
@@ -253,18 +312,60 @@ end
 -- already-correct default camCoords (just scaled closer) so it keeps looking at the ped from the
 -- front rather than from some arbitrary angle. Bone names confirmed against CitizenFX's own
 -- BoneID enum: https://github.com/citizenfx/fivem/blob/master/code/client/clrcore/External/BoneID.cs
-local CAMERA_FOCUS = {
-    -- 'default' is the whole-body shot used by the select screen and the Details tab. It has no
-    -- bone, so it frames the ped's live position plus zOffset (roughly navel height, which
-    -- centres a ~1.85m freemode ped) at an FOV wide enough to keep the head in frame.
-    default = { bone = nil, zOffset = 0.85, distance = 1.0, fov = 42.0 },
-    face = { bone = 'SKEL_Head', distance = 0.32, fov = 28.0 },
-    torso = { bone = 'SKEL_Spine2', distance = 0.55, fov = 35.0 },
-    leftArm = { bone = 'SKEL_L_Forearm', distance = 0.45, fov = 32.0 },
-    rightArm = { bone = 'SKEL_R_Forearm', distance = 0.45, fov = 32.0 },
-    leftLeg = { bone = 'SKEL_L_Calf', distance = 0.55, fov = 34.0 },
-    rightLeg = { bone = 'SKEL_R_Calf', distance = 0.55, fov = 34.0 },
+local CAMERA_FOCUS = {}
+
+-- 'default' is the whole-body shot used by the select screen and the Details tab. It has no
+-- bone, so it frames the ped's live position plus zOffset (how far up the body the frame is
+-- centred) at an FOV wide enough to keep the whole body in frame. `distance` scales how far back
+-- the camera sits along its configured direction (config.lua's camCoords-pedCoords line);
+-- `height` raises (positive) or lowers (negative) the camera relative to the aim point - since
+-- PointCamAtCoord always points straight at its target, that height difference is the only thing
+-- that produces the up/down tilt, not a rotation value we set directly.
+CAMERA_FOCUS.default = { bone = nil, zOffset = 0.1, distance = 1.0, height = -0.2, fov = 50.0 }
+
+-- Close-up presets keep the same camera DIRECTION as 'default' but scale both how far back and
+-- how high/low the camera sits, as a fraction (`ratio`) of 'default's OWN distance/height, rather
+-- than hardcoded absolute numbers. That's what "relative to the default" means here: retune
+-- 'default' and every close-up rescales and re-tilts proportionally with it.
+--
+-- IMPORTANT: our [camerafocus] diagnostic print showed GetEntityBoneIndexByName(ped, 'SKEL_Head')
+-- (and every other bone name) returning -1 on the LOCAL PLAYER ped specifically - every close-up
+-- was silently falling back to the same fixed point, which is what actually looked broken, not
+-- the distance/height maths. This repo's own qbx_core (modules/utils.lua:536) already routes
+-- around exactly this: GetPedBoneIndex(ped, numericId) for peds, GetEntityBoneIndexByName only
+-- for other entity types (ox_target's vehicle door-bone lookups are why *that* one works fine).
+-- So `bone` here is the classic numeric PED_BONE id, not a name. Values are copied verbatim from
+-- CitizenFX's own enum, not guessed:
+-- https://github.com/citizenfx/fivem/blob/master/code/client/clrcore/External/BoneID.cs
+-- (first attempt used remembered hex constants for everything but SKEL_Head - wrong, confirmed
+-- by boneIndex printing -1 for torso/arms/legs; these decimal values are the verified source).
+---@param bone integer classic numeric PED_BONE id (GetPedBoneIndex, not GetEntityBoneIndexByName)
+---@param ratio number this preset's distance/height as a fraction of CAMERA_FOCUS.default's
+---@param fov number vertical FOV in degrees for this close-up
+local function relativeFocus(bone, ratio, fov)
+    return {
+        bone = bone,
+        distance = CAMERA_FOCUS.default.distance * ratio,
+        height = CAMERA_FOCUS.default.height * ratio,
+        fov = fov,
+    }
+end
+
+local PED_BONE = {
+    SKEL_Head = 31086,
+    SKEL_Spine2 = 24817,
+    SKEL_L_Forearm = 61163,
+    SKEL_R_Forearm = 28252,
+    SKEL_L_Calf = 63931,
+    SKEL_R_Calf = 36864,
 }
+
+CAMERA_FOCUS.face = relativeFocus(PED_BONE.SKEL_Head, 0.32, 28.0)
+CAMERA_FOCUS.torso = relativeFocus(PED_BONE.SKEL_Spine2, 0.55, 35.0)
+CAMERA_FOCUS.leftArm = relativeFocus(PED_BONE.SKEL_L_Forearm, 0.45, 32.0)
+CAMERA_FOCUS.rightArm = relativeFocus(PED_BONE.SKEL_R_Forearm, 0.45, 32.0)
+CAMERA_FOCUS.leftLeg = relativeFocus(PED_BONE.SKEL_L_Calf, 0.55, 34.0)
+CAMERA_FOCUS.rightLeg = relativeFocus(PED_BONE.SKEL_R_Calf, 0.55, 34.0)
 
 ---@param key string key into CAMERA_FOCUS, unknown/nil keys fall back to 'default'.
 local function setCameraFocus(key)
@@ -275,8 +376,8 @@ local function setCameraFocus(key)
     local loc = Config.PreviewCamera
 
     local target
-    local boneIndex = preset.bone and GetEntityBoneIndexByName(ped, preset.bone) or -1
-    if boneIndex ~= -1 then
+    local boneIndex = preset.bone and GetPedBoneIndex(ped, preset.bone) or -1
+    if boneIndex and boneIndex ~= -1 and boneIndex ~= 0 then
         target = GetWorldPositionOfEntityBone(ped, boneIndex)
     else
         -- No bone (the 'default' preset) or the name didn't resolve. Frame the ped's *live*
@@ -288,7 +389,7 @@ local function setCameraFocus(key)
 
     local dx = (loc.camCoords.x - loc.pedCoords.x) * preset.distance
     local dy = (loc.camCoords.y - loc.pedCoords.y) * preset.distance
-    local camPos = vector3(target.x + dx, target.y + dy, target.z)
+    local camPos = vector3(target.x + dx, target.y + dy, target.z + (preset.height or 0.0))
 
     SetCamCoord(previewCam, camPos.x, camPos.y, camPos.z)
     SetCamFov(previewCam, preset.fov)
@@ -298,7 +399,14 @@ local function setCameraFocus(key)
     local aim = aimPointFor(target, camPos, preset.fov)
     PointCamAtCoord(previewCam, aim.x, aim.y, aim.z)
 
-    setLegsVisible(key ~= 'leftLeg' and key ~= 'rightLeg')
+    -- Diagnostic left in from tracking down GetEntityBoneIndexByName returning -1 for every ped
+    -- bone (fixed by switching to GetPedBoneIndex + numeric PED_BONE ids above). Keep running
+    -- this until each of the six presets is confirmed with a real, non-zero boneIndex in-game.
+    print(('[camerafocus] key=%s bone=%s boneIndex=%s distance=%.3f height=%.3f fov=%.1f'):format(
+        key or 'nil', tostring(preset.bone), tostring(boneIndex), preset.distance, preset.height or 0.0, preset.fov))
+    print(('[camerafocus] target %.3f %.3f %.3f'):format(target.x, target.y, target.z))
+    print(('[camerafocus] camPos %.3f %.3f %.3f'):format(camPos.x, camPos.y, camPos.z))
+    print(('[camerafocus] aim    %.3f %.3f %.3f'):format(aim.x, aim.y, aim.z))
 end
 
 ---Places the ped, waits for the world, settles it onto the floor and builds the preview
@@ -331,6 +439,13 @@ end
 
 RegisterNUICallback('setCameraFocus', function(data, cb)
     setCameraFocus(data.focus)
+    cb({})
+end)
+
+---Tab-wide, not per-zone: TattoosTab calls this once on mount (true) and once on unmount
+---(false), independently of whichever zone is focused within it.
+RegisterNUICallback('setTattoosMode', function(data, cb)
+    setPreviewUndressed(data.active == true)
     cb({})
 end)
 

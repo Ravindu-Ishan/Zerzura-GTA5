@@ -1,40 +1,73 @@
 @import "tailwindcss";
 
-/* ---------------------------------------------------------------------------
-   ZERZURA character UI - phase 4 theme.
+/* Tailwind v4 auto-detects source files by walking the project and skipping whatever
+   .gitignore excludes - but `out/` is this resource's TRACKED, deployed artifact, so it is
+   not ignored and therefore gets scanned. That makes the build feed on its own output: a
+   class name emitted by one build is found as a candidate by the next and re-emitted
+   forever, even after the markup that used it is gone. Exclude it explicitly. */
+@source not "../../out";
 
-   This page is drawn ON TOP of the live game world (the player's ped is visible
-   behind/beside it), so nothing here may paint a full-screen fill. Separation
-   from a bright game scene comes from the panels' own large soft drop shadow,
-   never from a backdrop element.
+/* ---------------------------------------------------------------------------
+   ZERZURA character UI - phase 5 theme ("flat HUD").
+
+   The brief: the previous pass looked like a web dashboard pasted over GTA -
+   rounded cards, big soft shadows, glassy gradients, wide letter-spacing. The
+   reference screenshot this is rebuilt against is the opposite of all of that:
+
+     - hard rectangles, ZERO border-radius anywhere on the screen
+     - flat single-colour fills, no gradients, no drop shadows, no glow
+     - dark navy-charcoal surfaces (not black, not neutral grey)
+     - heavy condensed all-caps headers with TIGHT tracking
+     - severity-coloured solid action buttons (muted / red / teal)
+
+   Two invariants inherited from this project's history, both load-bearing:
+
+   1. Nothing here may paint a full-screen fill. The page is composited on top
+      of the live game world and the player's ped has to stay visible beside it.
+   2. NEVER use backdrop-filter. FiveM's NUI runs in an off-screen-rendered CEF
+      layer with no real pixels behind it to sample, so backdrop blurring renders
+      solid black instead of frosted glass. Separation from a bright game scene
+      comes from the panels' own near-opaque fill - which is exactly what the
+      reference does too, so there is nothing to fake here.
+
+      Note for future edits: Tailwind v4's candidate scanner reads this stylesheet
+      too, so writing that effect's four-letter CSS function name as a bare word
+      anywhere in here - even inside a comment like this one - makes it emit a dead
+      filter utility rule into the shipped CSS. Spell it out as two words instead.
    --------------------------------------------------------------------------- */
 
 @theme {
   /* Type. The *-face vars are injected on <html> by next/font (see layout.tsx);
      they are deliberately named differently from the Tailwind tokens so the two
      never fight over the same custom property. */
-  --font-display: var(--font-display-face), "Oswald", "Arial Narrow", system-ui, sans-serif;
+  --font-display: var(--font-display-face), "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-sans: var(--font-sans-face), "Barlow", system-ui, sans-serif;
 
-  /* Surfaces, darkest at the back */
-  --color-ink: #06080a;
-  --color-panel: #0c0f13;
-  --color-raised: #141922;
-  --color-raised-2: #1b222c;
-  --color-panel-border: rgba(255, 255, 255, 0.1);
-  --color-hairline: rgba(255, 255, 255, 0.055);
+  /* Surfaces. Blue-tinted charcoal, sampled off the reference - the slight navy
+     cast is what stops this reading as a generic "dark mode website". Ordered
+     back to front: ink is the deepest well, band is the lightest chrome. */
+  --color-ink: #05070b;
+  --color-panel: #11151d;
+  --color-band: #272c38;
+  --color-raised: #1b2029;
+  --color-raised-2: #232936;
+  --color-panel-border: rgba(255, 255, 255, 0.09);
+  --color-hairline: rgba(255, 255, 255, 0.07);
 
   /* One confident accent, used for: primary actions, active/selected state,
-     highlighted numbers, selected borders. Nothing else. */
+     highlighted numbers, selection bars. Nothing else. */
   --color-accent: #2ee6c8;
   --color-accent-soft: rgba(46, 230, 200, 0.14);
-  --color-accent-ink: #032420;
-  --color-danger: #ff5566;
+  --color-accent-ink: #04241f;
+
+  /* Saturated signal red, matched to the reference's DELETE button. The old
+     #ff5566 was a pastel web-error pink; this is a warning light. */
+  --color-danger: #ee4036;
 
   /* Text */
-  --color-fg: #eef2f5;
-  --color-muted: rgba(238, 242, 245, 0.55);
-  --color-faint: rgba(238, 242, 245, 0.3);
+  --color-fg: #eef1f5;
+  --color-muted: rgba(238, 241, 245, 0.58);
+  --color-faint: rgba(238, 241, 245, 0.32);
 }
 
 /* Everything below is wrapped in Tailwind's own cascade layers on purpose.
@@ -78,30 +111,34 @@
 
 @layer components {
   /* ------------------------------- typography ------------------------------- */
+  /* Tracking is deliberately tight here. Airy 0.2em+ letter-spacing on every label
+     was the single biggest "designed by a web app" tell in the previous pass; the
+     reference sets its headers almost solid. Only .t-eyebrow keeps real tracking,
+     because at 10px it needs it to stay legible. */
 
   .t-display {
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 600;
-    letter-spacing: 0.045em;
-    line-height: 1.05;
+    font-weight: 700;
+    letter-spacing: 0.005em;
+    line-height: 1;
   }
 
   .t-eyebrow {
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 500;
-    font-size: 10px;
-    letter-spacing: 0.26em;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
     color: var(--color-faint);
   }
 
   .t-label {
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 500;
-    font-size: 11px;
-    letter-spacing: 0.14em;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.05em;
     color: var(--color-muted);
   }
 
@@ -111,145 +148,154 @@
 
   /* --------------------------------- panels --------------------------------- */
 
+  /* ONE standalone flat block, sitting directly on the game world.
+     Flat fill, hairline edge, no shadow - see the header note. 0.93 alpha is the
+     legibility floor against a bright daytime scene; the reference sits at roughly
+     the same place.
+
+     IMPORTANT - this is a block, not an enclosure. It used to wrap the entire
+     character creator, which is exactly what made that screen read as "a form with a
+     background" / a modal pasted over the game. Every screen now composes SEPARATE
+     .panel / .band blocks in a gapped stack (see SelectScreen, which was always built
+     this way, and CreationFlow, which was rebuilt to match). Do not go back to
+     wrapping a whole screen in one of these. */
   .panel {
     position: relative;
     border: 1px solid var(--color-panel-border);
-    border-radius: 14px;
-    background:
-      linear-gradient(
-        180deg,
-        rgba(30, 37, 47, 0.9) 0%,
-        rgba(12, 15, 19, 0.93) 38%,
-        rgba(7, 9, 12, 0.95) 100%
-      );
-    /* No backdrop-filter: FiveM's NUI runs in an off-screen-rendered CEF layer with no real
-       pixel data behind it to sample, so backdrop-filter/blur() reliably renders solid black
-       instead of a frosted-glass effect. The gradient above is already near-opaque, so this
-       is dropped rather than worked around. */
-    /* The shadow *is* the scrim - it darkens the game scene right around the panel
-       so light environments don't wash the UI out, without any full-screen fill. */
-    box-shadow:
-      0 40px 90px -24px rgba(0, 0, 0, 0.95),
-      0 0 90px -20px rgba(0, 0, 0, 0.8),
-      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    background: rgba(17, 21, 29, 0.93);
   }
 
-  /* A recessed area inside a panel (sub-nav rails, list wells). */
-  .well {
-    background: rgba(0, 0, 0, 0.28);
-    border: 1px solid var(--color-hairline);
-    border-radius: 10px;
+  /* The lighter navy chrome bar - panel headers and action bars. This is the
+     reference's "SELECT CHARACTER" block colour. */
+  .band {
+    background: rgba(39, 44, 56, 0.95);
   }
+
+  /* The thin lighter strip the reference runs under its header block. Not a border:
+     it is its own short, slightly-lighter bar, which is what makes the header read
+     as a stamped HUD plate rather than a <h1> with a rule under it. */
+  .band-underline {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  /* (There used to be a `.well` here - a translucent recessed area for sub-nav rails.
+     It only worked *inside* an enclosing panel, where it had a solid surface behind it
+     to be recessed into. Now that no screen has an enclosure, a 0.3-alpha black rail
+     sitting straight on the game world would be unreadable, so the nav rail is a real
+     .panel block like everything else and .well is gone.) */
+
+  /* --------------------------------- rows ----------------------------------- */
+  /* List rows / selectable tiles. Selection is a hard 3px accent bar on the leading
+     edge plus a flat accent wash - no glow, no border colour change, no lift. */
 
   .card {
-    border: 1px solid var(--color-hairline);
-    border-radius: 10px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+    border-left: 3px solid transparent;
+    background: rgba(35, 41, 54, 0.86);
+    transition: background 110ms linear, border-color 110ms linear;
   }
 
   .card:hover {
-    border-color: rgba(255, 255, 255, 0.16);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+    background: rgba(51, 59, 76, 0.9);
   }
 
   .card[data-active="true"] {
-    border-color: rgba(46, 230, 200, 0.55);
-    background: linear-gradient(90deg, rgba(46, 230, 200, 0.16), rgba(46, 230, 200, 0.02));
-    box-shadow: 0 0 0 1px rgba(46, 230, 200, 0.18), 0 10px 30px -18px rgba(46, 230, 200, 0.7);
+    border-left-color: var(--color-accent);
+    background: rgba(46, 230, 200, 0.14);
   }
 
   /* -------------------------------- buttons --------------------------------- */
+  /* Solid, hard-edged, colour-coded by severity - straight off the reference's
+     LEAVE / DELETE / BEGIN row. No borders, no radius, no shadow: the fill is the
+     whole button. */
 
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    height: 38px;
-    padding: 0 18px;
-    border-radius: 8px;
-    border: 1px solid transparent;
+    gap: 9px;
+    height: 40px;
+    padding: 0 20px;
+    border: 0;
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 600;
-    font-size: 13px;
-    letter-spacing: 0.1em;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.055em;
     white-space: nowrap;
-    transition: background 120ms ease, color 120ms ease, border-color 120ms ease, filter 120ms ease;
+    transition: background 110ms linear, color 110ms linear;
   }
 
   .btn:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
   }
 
   .btn-sm {
     height: 30px;
     padding: 0 12px;
-    font-size: 11.5px;
+    font-size: 12px;
+    gap: 7px;
   }
 
   .btn-primary {
     background: var(--color-accent);
     color: var(--color-accent-ink);
-    box-shadow: 0 10px 30px -14px rgba(46, 230, 200, 0.9);
   }
 
   .btn-primary:hover:not(:disabled) {
-    filter: brightness(1.1);
+    background: #5cf0d9;
   }
 
   .btn-ghost {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: var(--color-panel-border);
-    color: rgba(255, 255, 255, 0.72);
+    background: rgba(48, 54, 68, 0.88);
+    color: rgba(255, 255, 255, 0.82);
   }
 
   .btn-ghost:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(70, 79, 97, 0.95);
     color: #fff;
   }
 
   .btn-danger {
-    background: rgba(255, 85, 102, 0.12);
-    border-color: rgba(255, 85, 102, 0.32);
-    color: #ff8b96;
-  }
-
-  .btn-danger:hover:not(:disabled) {
-    background: rgba(255, 85, 102, 0.24);
+    background: var(--color-danger);
     color: #fff;
   }
 
+  .btn-danger:hover:not(:disabled) {
+    background: #ff5346;
+  }
+
   /* ---------------------------------- tabs ---------------------------------- */
+  /* Was: rounded pills with a white active fill. Now: flat segments with an accent
+     underline, which is how in-game menus mark a section. */
 
   .tab {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    height: 34px;
-    padding: 0 15px;
-    border-radius: 999px;
+    gap: 8px;
+    height: 38px;
+    padding: 0 16px;
+    border-bottom: 2px solid transparent;
     font-family: var(--font-display);
     text-transform: uppercase;
     font-weight: 600;
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: 13.5px;
+    letter-spacing: 0.045em;
+    color: rgba(255, 255, 255, 0.45);
     white-space: nowrap;
-    transition: background 120ms ease, color 120ms ease;
+    transition: background 110ms linear, color 110ms linear, border-color 110ms linear;
   }
 
   .tab:hover {
     color: #fff;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .tab[data-active="true"] {
-    background: #f1f4f7;
-    color: #0a0d11;
-    box-shadow: 0 6px 20px -10px rgba(255, 255, 255, 0.55);
+    background: rgba(46, 230, 200, 0.1);
+    border-bottom-color: var(--color-accent);
+    color: var(--color-accent);
   }
 
   /* ------------------------------- nav rows --------------------------------- */
@@ -259,26 +305,25 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px 11px;
-    border-radius: 8px;
-    border-left: 2px solid transparent;
+    padding: 9px 11px;
+    border-left: 3px solid transparent;
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 500;
-    font-size: 12.5px;
-    letter-spacing: 0.06em;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.03em;
     color: rgba(255, 255, 255, 0.55);
     text-align: left;
-    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    transition: background 110ms linear, color 110ms linear, border-color 110ms linear;
   }
 
   .navrow:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
     color: #fff;
   }
 
   .navrow[data-active="true"] {
-    background: linear-gradient(90deg, rgba(46, 230, 200, 0.18), rgba(46, 230, 200, 0.02));
+    background: rgba(46, 230, 200, 0.13);
     border-left-color: var(--color-accent);
     color: var(--color-accent);
   }
@@ -289,64 +334,63 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    height: 28px;
-    padding: 0 11px;
-    border-radius: 7px;
+    height: 27px;
+    padding: 0 10px;
     border: 1px solid var(--color-panel-border);
-    /* See .panel above re: no backdrop-filter in FiveM's NUI - bumped opacity slightly to
-       compensate for the lost blur softness. */
-    background: rgba(8, 10, 13, 0.86);
+    /* See the header note re: no backdrop-filter in FiveM's NUI - plain near-opaque fill. */
+    background: rgba(20, 24, 32, 0.9);
     font-family: var(--font-display);
     text-transform: uppercase;
-    font-weight: 500;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    color: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.72);
   }
 
   .chip-accent {
     color: var(--color-accent);
-    border-color: rgba(46, 230, 200, 0.32);
-    background: rgba(46, 230, 200, 0.12);
+    border-color: rgba(46, 230, 200, 0.4);
+    background: rgba(46, 230, 200, 0.14);
   }
 
   /* --------------------------------- fields --------------------------------- */
 
   .field {
     width: 100%;
-    height: 38px;
-    padding: 0 11px;
-    border-radius: 8px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid var(--color-panel-border);
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.35);
     color: var(--color-fg);
     font-size: 14px;
     outline: none;
-    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    transition: border-color 110ms linear, box-shadow 110ms linear, background 110ms linear;
   }
 
   .field::placeholder {
     color: var(--color-faint);
   }
 
+  /* Focus is a hard 2px accent bar along the bottom edge (inset, so it doesn't
+     change the element's box) rather than the old soft glow ring. */
   .field:focus {
-    border-color: rgba(46, 230, 200, 0.6);
-    box-shadow: 0 0 0 3px rgba(46, 230, 200, 0.12);
-    background: rgba(46, 230, 200, 0.05);
+    border-color: rgba(46, 230, 200, 0.45);
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 -2px 0 0 var(--color-accent);
   }
 
   select.field {
     appearance: none;
     padding-right: 30px;
     /* inline chevron, so no runtime asset fetch */
-    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef2f5' stroke-opacity='.55' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef1f5' stroke-opacity='.55' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 9px center;
     background-size: 15px 15px;
   }
 
   select.field option {
-    background: #10151c;
+    background: #11151d;
     color: var(--color-fg);
   }
 
@@ -363,49 +407,47 @@
 
   /* --------------------------------- range ---------------------------------- */
   /* --fill (0-100%) is set inline by <Slider> so the filled half of the track can
-     be painted in the accent colour without a wrapper element. */
+     be painted in the accent colour without a wrapper element.
+
+     Square notch thumb on a square track - a round thumb with a soft halo was pure
+     material-design and read as web UI at a glance. */
 
   .range {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 16px;
+    height: 18px;
     background: transparent;
     cursor: pointer;
   }
 
   .range::-webkit-slider-runnable-track {
-    height: 4px;
-    border-radius: 999px;
+    height: 6px;
+    border-radius: 0;
     background: linear-gradient(
       to right,
       var(--color-accent) 0%,
       var(--color-accent) var(--fill, 0%),
-      rgba(255, 255, 255, 0.13) var(--fill, 0%),
-      rgba(255, 255, 255, 0.13) 100%
+      rgba(255, 255, 255, 0.12) var(--fill, 0%),
+      rgba(255, 255, 255, 0.12) 100%
     );
   }
 
   .range::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 13px;
-    height: 13px;
-    margin-top: -4.5px;
-    border-radius: 50%;
+    width: 5px;
+    height: 18px;
+    margin-top: -6px;
+    border-radius: 0;
     background: #ffffff;
-    box-shadow:
-      0 0 0 3px rgba(46, 230, 200, 0.22),
-      0 2px 6px rgba(0, 0, 0, 0.7);
-    transition: transform 110ms ease, box-shadow 110ms ease;
+    transition: background 110ms linear, width 110ms linear;
   }
 
   .range:hover::-webkit-slider-thumb,
   .range:focus-visible::-webkit-slider-thumb {
-    transform: scale(1.15);
-    box-shadow:
-      0 0 0 5px rgba(46, 230, 200, 0.28),
-      0 2px 8px rgba(0, 0, 0, 0.7);
+    width: 7px;
+    background: var(--color-accent);
   }
 
   .range:focus {
@@ -425,25 +467,25 @@
   }
 
   .scroll-thin::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
   }
 
   .scroll-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.16);
-    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
   }
 
   .scroll-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(46, 230, 200, 0.55);
+    background: var(--color-accent);
   }
 
   /* ------------------------------- animation --------------------------------- */
+  /* Short and linear-ish. The old 260ms spring-eased rise felt like a web page
+     transition; HUD elements snap in. */
 
   @keyframes zx-rise {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translateY(6px);
     }
     to {
       opacity: 1;
@@ -461,11 +503,11 @@
   }
 
   .anim-rise {
-    animation: zx-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: zx-rise 160ms ease-out both;
   }
 
   .anim-fade {
-    animation: zx-fade 200ms ease both;
+    animation: zx-fade 140ms linear both;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -474,4 +516,19 @@
       animation: none;
     }
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Hard invariant, deliberately UNLAYERED so it outranks every Tailwind utility
+   (including any stray `rounded-*` in a component): this design has no rounded
+   corners. Anywhere. That single property is most of what separates "in-game
+   HUD" from "web app", so it is enforced here rather than trusted to code review.
+
+   `*` does not match browser pseudo-elements, so the slider thumb/track and the
+   scrollbar parts set border-radius: 0 explicitly above.
+   --------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  border-radius: 0;
 }

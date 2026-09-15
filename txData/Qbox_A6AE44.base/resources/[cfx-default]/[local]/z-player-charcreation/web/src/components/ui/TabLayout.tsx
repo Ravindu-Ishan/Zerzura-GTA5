@@ -4,12 +4,18 @@ import { ReactNode } from "react";
 import Icon, { IconName } from "./Icon";
 
 /**
- * Shared inner chrome for the creation tabs: a left category rail (bold header +
- * icon-labelled rows) and a right detail pane.
+ * Shared chrome for the creation tabs: a left category rail (bold header + icon-labelled
+ * rows) and a right detail pane.
  *
  * Every slider-heavy tab uses this, so the eye always lands in the same two places -
  * pick a group on the left, tune it on the right - instead of scrolling one long
  * undifferentiated list of 20+ sliders.
+ *
+ * The rail and the pane are two SEPARATE flat blocks with a real gap between them, each
+ * carrying its own surface and padding - not two regions carved out of one enclosing panel.
+ * That is the same language SelectScreen's stacked blocks use, and the gap (2.5) matches the
+ * vertical rhythm CreationFlow stacks its own blocks with, so the whole screen reads as one
+ * set of game-HUD plates rather than as a form on a background.
  */
 
 export interface NavItem {
@@ -31,9 +37,9 @@ interface SectionNavProps {
 
 export function SectionNav({ header, items, active, onSelect }: SectionNavProps) {
   return (
-    <nav className="well flex min-h-0 flex-col p-2">
-      <div className="t-eyebrow px-2 pt-1.5 pb-2.5">{header}</div>
-      <div className="scroll-thin flex min-h-0 flex-1 flex-col gap-[3px] overflow-y-auto pr-0.5">
+    <nav className="panel flex min-h-0 flex-col">
+      <div className="t-eyebrow border-b border-hairline px-3 py-2.5">{header}</div>
+      <div className="scroll-thin flex min-h-0 flex-1 flex-col overflow-y-auto py-1">
         {items.map((item) => (
           <button
             key={item.id}
@@ -44,12 +50,13 @@ export function SectionNav({ header, items, active, onSelect }: SectionNavProps)
             <Icon name={item.icon} size={15} />
             <span className="min-w-0 flex-1 truncate">{item.label}</span>
             {item.badge !== undefined && item.badge > 0 && (
-              <span className="t-num rounded bg-accent/15 px-1.5 py-[1px] text-[10px] font-semibold text-accent">
+              <span className="t-num bg-accent/20 px-1.5 py-[1px] text-[11px] font-semibold text-accent">
                 {item.badge}
               </span>
             )}
+            {/* A flat 5px square, not a glowing dot. */}
             {item.dot && item.badge === undefined && (
-              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(46,230,200,.9)]" />
+              <span className="h-[5px] w-[5px] shrink-0 bg-accent" />
             )}
           </button>
         ))}
@@ -79,16 +86,16 @@ export default function TabLayout({
 }: TabLayoutProps) {
   return (
     <div
-      className="grid min-h-0 flex-1 gap-4"
+      className="grid min-h-0 flex-1 gap-2.5"
       style={{ gridTemplateColumns: nav ? "204px minmax(0,1fr)" : "minmax(0,1fr)" }}
     >
       {nav}
-      <section className="flex min-h-0 flex-col">
-        <div className="flex items-start justify-between gap-4 pb-3">
+      <section className="panel flex min-h-0 flex-col p-5">
+        <div className="mb-3 flex items-start justify-between gap-4 border-b border-hairline pb-3">
           <div className="min-w-0">
-            <h3 className="t-display text-[17px] text-white">{title}</h3>
+            <h3 className="t-display text-[20px] text-white">{title}</h3>
             {description && (
-              <p className="mt-1 text-[12.5px] leading-snug text-white/45">{description}</p>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-white/45">{description}</p>
             )}
           </div>
           {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}

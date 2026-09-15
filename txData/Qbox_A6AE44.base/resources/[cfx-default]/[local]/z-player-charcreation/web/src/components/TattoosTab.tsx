@@ -24,9 +24,9 @@ const ZONES: { id: string; label: string; icon: IconName }[] = [
   { id: "ZONE_RIGHT_LEG", label: "Right Leg", icon: "ink" },
 ];
 
-// Maps each body zone to the matching client/main.lua CAMERA_FOCUS preset. Leg zones also
-// trigger the temporary trouser removal on the Lua side (see setCameraFocus/setLegsVisible) -
-// nothing extra needed here, just picking the right key.
+// Maps each body zone to the matching client/main.lua CAMERA_FOCUS preset. Framing only -
+// undressing is tab-wide (the setTattoosMode effect below), not per-zone, so there is nothing
+// zone-specific to do here beyond picking the right key.
 const FOCUS_FOR_ZONE: Record<string, string> = {
   ZONE_HEAD: "face",
   ZONE_HAIR: "face",
@@ -61,6 +61,15 @@ export default function TattoosTab({ applied, onChange }: TattoosTabProps) {
 
   useEffect(() => {
     fetchNui<Catalog>("getTattooCatalog", {}, MOCK_CATALOG).then(setCatalog);
+  }, []);
+
+  // Undress for the whole time this tab is open (every zone needs it, not just the one
+  // currently focused) and re-dress on the way out - mount/unmount, not per-zone.
+  useEffect(() => {
+    fetchNui("setTattoosMode", { active: true });
+    return () => {
+      fetchNui("setTattoosMode", { active: false });
+    };
   }, []);
 
   // Re-frames the camera on whichever body part this zone covers every time it changes
@@ -154,7 +163,7 @@ export default function TattoosTab({ applied, onChange }: TattoosTabProps) {
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-white/35 hover:bg-white/10 hover:text-white"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-white/35 hover:bg-white/10 hover:text-white"
             >
               <Icon name="x" size={13} />
             </button>
@@ -185,7 +194,7 @@ export default function TattoosTab({ applied, onChange }: TattoosTabProps) {
                 className="card flex items-center gap-2.5 px-2.5 py-2 text-left"
               >
                 <span
-                  className={`grid h-5 w-5 shrink-0 place-items-center rounded border transition-colors ${
+                  className={`grid h-5 w-5 shrink-0 place-items-center border transition-colors ${
                     on
                       ? "border-accent bg-accent text-accent-ink"
                       : "border-white/20 bg-black/40 text-transparent"

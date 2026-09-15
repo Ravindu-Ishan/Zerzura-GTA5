@@ -120,7 +120,7 @@ export default function HairEyesTab({
       </div>
 
       {group === "style" && hairStyleMax <= 0 && (
-        <p className="mt-3 rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-[12px] leading-snug text-white/40">
+        <p className="mt-3 border-l-[3px] border-white/20 bg-black/35 px-3 py-2.5 text-[12px] leading-snug text-white/40">
           No hair variations reported for this ped yet. Pick a body on the Details tab - the
           catalogue is queried from the model the moment it loads.
         </p>

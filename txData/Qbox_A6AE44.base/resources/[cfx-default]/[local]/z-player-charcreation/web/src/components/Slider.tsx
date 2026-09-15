@@ -41,7 +41,7 @@ export default function Slider({
         <span className="t-label truncate transition-colors group-hover:text-white/80">
           {label}
         </span>
-        <span className="t-num shrink-0 font-display text-[13px] font-semibold tabular-nums">
+        <span className="t-num shrink-0 font-display text-[14px] font-bold tabular-nums">
           <span className={touched ? "text-accent" : "text-white/55"}>
             {isInteger ? value.toFixed(0) : value.toFixed(2)}
           </span>
