@@ -33,6 +33,7 @@ desktop.ini
 *.swp
 .vscode/
 .idea/
+*.lnk
 
 # Node (in case you build/npm-install inside any resource locally)
 node_modules/
