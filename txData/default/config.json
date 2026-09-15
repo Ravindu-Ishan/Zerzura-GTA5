@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "general": {
+    "serverName": "ZERZURA-GTA5"
+  },
+  "server": {
+    "dataPath": "D:/1 -My files/MycodeWorkspaces/GTA5_Server/GTA5_ZERZURA_QBOX/txData/Qbox_A6AE44.base/"
+  }
+}

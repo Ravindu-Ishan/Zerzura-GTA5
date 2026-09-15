@@ -1,0 +1,477 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   ZERZURA character UI - phase 4 theme.
+
+   This page is drawn ON TOP of the live game world (the player's ped is visible
+   behind/beside it), so nothing here may paint a full-screen fill. Separation
+   from a bright game scene comes from the panels' own large soft drop shadow,
+   never from a backdrop element.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  /* Type. The *-face vars are injected on <html> by next/font (see layout.tsx);
+     they are deliberately named differently from the Tailwind tokens so the two
+     never fight over the same custom property. */
+  --font-display: var(--font-display-face), "Oswald", "Arial Narrow", system-ui, sans-serif;
+  --font-sans: var(--font-sans-face), "Barlow", system-ui, sans-serif;
+
+  /* Surfaces, darkest at the back */
+  --color-ink: #06080a;
+  --color-panel: #0c0f13;
+  --color-raised: #141922;
+  --color-raised-2: #1b222c;
+  --color-panel-border: rgba(255, 255, 255, 0.1);
+  --color-hairline: rgba(255, 255, 255, 0.055);
+
+  /* One confident accent, used for: primary actions, active/selected state,
+     highlighted numbers, selected borders. Nothing else. */
+  --color-accent: #2ee6c8;
+  --color-accent-soft: rgba(46, 230, 200, 0.14);
+  --color-accent-ink: #032420;
+  --color-danger: #ff5566;
+
+  /* Text */
+  --color-fg: #eef2f5;
+  --color-muted: rgba(238, 242, 245, 0.55);
+  --color-faint: rgba(238, 242, 245, 0.3);
+}
+
+/* Everything below is wrapped in Tailwind's own cascade layers on purpose.
+
+   Tailwind v4 declares `@layer theme, base, components, utilities`, and UNLAYERED css
+   outranks every layered rule - so leaving these component classes bare would make
+   `.field` beat `pl-9`, `.t-display` beat `tracking-[...]`, and so on. Inside
+   `@layer components` they behave like real components: utilities can still override
+   them inline, which is what every call site here assumes. */
+
+@layer base {
+  html,
+  body {
+    background: transparent;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* Every interactive thing in a game overlay should feel like a control, not a document. */
+  button {
+    cursor: pointer;
+  }
+
+  /* <body> carries `select-none` so dragging a slider never paints a text selection across
+     the panel - but that would also make the name/search fields unselectable in CEF, so
+     text entry gets it back explicitly. */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}
+
+@layer components {
+  /* ------------------------------- typography ------------------------------- */
+
+  .t-display {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.045em;
+    line-height: 1.05;
+  }
+
+  .t-eyebrow {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    color: var(--color-faint);
+  }
+
+  .t-label {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--color-muted);
+  }
+
+  .t-num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --------------------------------- panels --------------------------------- */
+
+  .panel {
+    position: relative;
+    border: 1px solid var(--color-panel-border);
+    border-radius: 14px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(30, 37, 47, 0.9) 0%,
+        rgba(12, 15, 19, 0.93) 38%,
+        rgba(7, 9, 12, 0.95) 100%
+      );
+    /* No backdrop-filter: FiveM's NUI runs in an off-screen-rendered CEF layer with no real
+       pixel data behind it to sample, so backdrop-filter/blur() reliably renders solid black
+       instead of a frosted-glass effect. The gradient above is already near-opaque, so this
+       is dropped rather than worked around. */
+    /* The shadow *is* the scrim - it darkens the game scene right around the panel
+       so light environments don't wash the UI out, without any full-screen fill. */
+    box-shadow:
+      0 40px 90px -24px rgba(0, 0, 0, 0.95),
+      0 0 90px -20px rgba(0, 0, 0, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* A recessed area inside a panel (sub-nav rails, list wells). */
+  .well {
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--color-hairline);
+    border-radius: 10px;
+  }
+
+  .card {
+    border: 1px solid var(--color-hairline);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
+    transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
+  }
+
+  .card:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  }
+
+  .card[data-active="true"] {
+    border-color: rgba(46, 230, 200, 0.55);
+    background: linear-gradient(90deg, rgba(46, 230, 200, 0.16), rgba(46, 230, 200, 0.02));
+    box-shadow: 0 0 0 1px rgba(46, 230, 200, 0.18), 0 10px 30px -18px rgba(46, 230, 200, 0.7);
+  }
+
+  /* -------------------------------- buttons --------------------------------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease, filter 120ms ease;
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-sm {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 11.5px;
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+    box-shadow: 0 10px 30px -14px rgba(46, 230, 200, 0.9);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  .btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--color-panel-border);
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .btn-danger {
+    background: rgba(255, 85, 102, 0.12);
+    border-color: rgba(255, 85, 102, 0.32);
+    color: #ff8b96;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(255, 85, 102, 0.24);
+    color: #fff;
+  }
+
+  /* ---------------------------------- tabs ---------------------------------- */
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 15px;
+    border-radius: 999px;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    transition: background 120ms ease, color 120ms ease;
+  }
+
+  .tab:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .tab[data-active="true"] {
+    background: #f1f4f7;
+    color: #0a0d11;
+    box-shadow: 0 6px 20px -10px rgba(255, 255, 255, 0.55);
+  }
+
+  /* ------------------------------- nav rows --------------------------------- */
+
+  .navrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 11px;
+    border-radius: 8px;
+    border-left: 2px solid transparent;
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: left;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+
+  .navrow:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+  }
+
+  .navrow[data-active="true"] {
+    background: linear-gradient(90deg, rgba(46, 230, 200, 0.18), rgba(46, 230, 200, 0.02));
+    border-left-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  /* --------------------------------- chips ---------------------------------- */
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 7px;
+    border: 1px solid var(--color-panel-border);
+    /* See .panel above re: no backdrop-filter in FiveM's NUI - bumped opacity slightly to
+       compensate for the lost blur softness. */
+    background: rgba(8, 10, 13, 0.86);
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .chip-accent {
+    color: var(--color-accent);
+    border-color: rgba(46, 230, 200, 0.32);
+    background: rgba(46, 230, 200, 0.12);
+  }
+
+  /* --------------------------------- fields --------------------------------- */
+
+  .field {
+    width: 100%;
+    height: 38px;
+    padding: 0 11px;
+    border-radius: 8px;
+    border: 1px solid var(--color-panel-border);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--color-fg);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+  }
+
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+
+  .field:focus {
+    border-color: rgba(46, 230, 200, 0.6);
+    box-shadow: 0 0 0 3px rgba(46, 230, 200, 0.12);
+    background: rgba(46, 230, 200, 0.05);
+  }
+
+  select.field {
+    appearance: none;
+    padding-right: 30px;
+    /* inline chevron, so no runtime asset fetch */
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef2f5' stroke-opacity='.55' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 15px 15px;
+  }
+
+  select.field option {
+    background: #10151c;
+    color: var(--color-fg);
+  }
+
+  /* CEF renders the native date picker glyph almost black on our dark field. */
+  input[type="date"].field::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.45;
+    cursor: pointer;
+  }
+
+  input[type="date"].field::-webkit-calendar-picker-indicator:hover {
+    opacity: 0.85;
+  }
+
+  /* --------------------------------- range ---------------------------------- */
+  /* --fill (0-100%) is set inline by <Slider> so the filled half of the track can
+     be painted in the accent colour without a wrapper element. */
+
+  .range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--fill, 0%),
+      rgba(255, 255, 255, 0.13) var(--fill, 0%),
+      rgba(255, 255, 255, 0.13) 100%
+    );
+  }
+
+  .range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    margin-top: -4.5px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 3px rgba(46, 230, 200, 0.22),
+      0 2px 6px rgba(0, 0, 0, 0.7);
+    transition: transform 110ms ease, box-shadow 110ms ease;
+  }
+
+  .range:hover::-webkit-slider-thumb,
+  .range:focus-visible::-webkit-slider-thumb {
+    transform: scale(1.15);
+    box-shadow:
+      0 0 0 5px rgba(46, 230, 200, 0.28),
+      0 2px 8px rgba(0, 0, 0, 0.7);
+  }
+
+  .range:focus {
+    outline: none;
+  }
+
+  /* ------------------------------- scrollbars -------------------------------- */
+
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+
+  .scroll-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 999px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+  }
+
+  .scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(46, 230, 200, 0.55);
+  }
+
+  /* ------------------------------- animation --------------------------------- */
+
+  @keyframes zx-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes zx-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .anim-rise {
+    animation: zx-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim-fade {
+    animation: zx-fade 200ms ease both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .anim-rise,
+    .anim-fade {
+      animation: none;
+    }
+  }
+}

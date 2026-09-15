@@ -1,0 +1,45 @@
+# ============================================================
+# FXServer artifact (the CFX server build itself)
+# This is downloaded/updated via txAdmin's "Check for updates" -
+# it's a binary build, not your code, and is huge. Never commit it.
+# ============================================================
+/server/
+
+# ============================================================
+# txAdmin runtime data (generated while the server runs, not source)
+# ============================================================
+/txData/*/logs/
+/txData/*/data/
+/txData/*/cache/
+/txData/*/*.replxx_history
+/txData/*/server.cfg.bkp
+/txData/admins.json
+
+# Secrets (license key, DB connection string) - real values stay local only.
+# Tracked template: txData/*/secrets.cfg.example
+/txData/*/secrets.cfg
+
+# Resource-level cache/log noise that can appear anywhere under resources/
+**/cache/
+**/crashes/
+*.log
+
+# ============================================================
+# OS / editor junk
+# ============================================================
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Node (in case you build/npm-install inside any resource locally)
+node_modules/
+.next/
+
+# Claude Code session state
+/.claude/
+
+# Database backups (large, contain player data - never commit)
+/database/backups/

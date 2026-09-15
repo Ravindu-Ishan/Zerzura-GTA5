@@ -1,0 +1,13 @@
+yarn-error.log
+node_modules
+dist
+release
+# NOTE: "web"/"dist" are normally the unbuilt UI source and its build output in
+# this resource's own dev repo, but this deployed copy only has the prebuilt
+# web/dist the resource loads at runtime (ui_page in fxmanifest.lua), so it
+# must stay tracked here.
+!web/dist
+!web/dist/**
+.vscode/settings.json
+.prettierrc
+.prettierignore
