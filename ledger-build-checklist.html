@@ -1,99 +1,85 @@
 <title>Ledger Build Checklist</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root{
-  --bg:#f2efe7;
-  --panel:#ffffff;
-  --panel-2:#eae5d8;
-  --ink:#1c1c1a;
-  --ink-muted:#66625a;
-  --line:#d7d0bf;
-  --amber:#a8631a;
-  --amber-strong:#8a4e10;
-  --teal:#0f6e68;
-  --danger:#9c3324;
-  --good:#3f7a3d;
-  --tag-bg:#e7ddc2;
-  --track:#e2dcc9;
+  --bg:#11151d;
+  --panel:#1a1f2b;
+  --panel-2:#20242e;
+  --ink:#eef0f3;
+  --ink-muted:#8b93a1;
+  --line:#2a2f3b;
+  --accent:#2ee6c8;
+  --danger:#ee4036;
+  --tag-bg:#242a36;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#15171a; --panel:#1c1f24; --panel-2:#20242b; --ink:#edeef0;
-    --ink-muted:#9aa0ab; --line:#30343c; --amber:#e8a33d; --amber-strong:#f4b95a;
-    --teal:#4fbdb5; --danger:#e2685a; --good:#7fc26a; --tag-bg:#2a2a24; --track:#272a30;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#15171a; --panel:#1c1f24; --panel-2:#20242b; --ink:#edeef0;
-  --ink-muted:#9aa0ab; --line:#30343c; --amber:#e8a33d; --amber-strong:#f4b95a;
-  --teal:#4fbdb5; --danger:#e2685a; --good:#7fc26a; --tag-bg:#2a2a24; --track:#272a30;
-}
+*, *::before, *::after{border-radius:0 !important;box-shadow:none !important;}
 *{box-sizing:border-box;}
-body{background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;margin:0;padding:0 20px;line-height:1.55;}
+body{background:var(--bg);color:var(--ink);font-family:'Barlow',system-ui,sans-serif;margin:0;padding:0 20px;line-height:1.55;}
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;}
-h1,h2,h3{font-family:'Big Shoulders Display','Arial Narrow',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.01em;text-wrap:balance;margin:0;}
-a{color:var(--teal);}
+h1,h2,h3{font-family:'Barlow Condensed',Impact,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.005em;text-wrap:balance;margin:0;}
+a{color:var(--accent);}
 .wrap{max-width:1180px;margin:0 auto;padding-block:32px 80px;}
 
-.masthead{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:26px clamp(18px,4vw,36px);display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:flex-end;position:relative;overflow:hidden;}
-.masthead::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:28px 28px;opacity:.16;pointer-events:none;}
-.masthead-left{position:relative;max-width:600px;}
-.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+.masthead{background:var(--panel);padding:26px clamp(18px,4vw,36px);display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--accent);}
+.masthead-left{max-width:600px;}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
 .masthead h1{font-size:clamp(2rem,4.4vw,3.2rem);line-height:.98;color:var(--ink);}
 .masthead p{color:var(--ink-muted);margin-top:10px;font-size:.98rem;max-width:54ch;}
 
-.progress-card{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:16px 20px;min-width:220px;}
-.progress-card .pct{font-family:'Big Shoulders Display',sans-serif;font-size:2.4rem;color:var(--amber-strong);line-height:1;}
+.progress-card{background:var(--panel-2);padding:16px 20px;min-width:220px;}
+.progress-card .pct{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:2.4rem;color:var(--accent);line-height:1;}
 .progress-card .lbl{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.1em;color:var(--ink-muted);text-transform:uppercase;margin-top:2px;}
-.bar{height:8px;border-radius:5px;background:var(--track);overflow:hidden;margin-top:10px;}
-.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--amber-strong));width:0%;transition:width .3s ease;}
-.reset-btn{margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--ink-muted);border-radius:3px;padding:5px 9px;cursor:pointer;}
-.reset-btn:hover{color:var(--danger);border-color:var(--danger);}
+.bar{height:6px;background:var(--tag-bg);overflow:hidden;margin-top:10px;}
+.bar > i{display:block;height:100%;background:var(--accent);}
+.progress-card .note{margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.03em;color:var(--ink-muted);}
 
-.callout{margin-top:20px;border:1px solid var(--line);border-left:4px solid var(--danger);background:var(--panel);border-radius:3px;padding:14px 20px;}
+.callout{margin-top:10px;border-left:4px solid var(--danger);background:var(--panel);padding:14px 20px;}
 .callout .label{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--danger);margin-bottom:6px;}
 .callout p{margin:0;color:var(--ink-muted);font-size:.92rem;max-width:74ch;}
 .callout p + p{margin-top:8px;}
 .callout b{color:var(--ink);}
 
-.layout{display:grid;grid-template-columns:230px 1fr;gap:28px;margin-top:26px;align-items:start;}
+.layout{display:grid;grid-template-columns:230px 1fr;gap:10px;margin-top:10px;align-items:start;}
 @media (max-width:820px){.layout{grid-template-columns:1fr;}nav.toc{position:static;order:-1;}}
-nav.toc{position:sticky;top:20px;border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:14px;max-height:calc(100vh - 40px);overflow-y:auto;}
+nav.toc{position:sticky;top:10px;background:var(--panel);padding:14px;max-height:calc(100vh - 40px);overflow-y:auto;}
 nav.toc .label{font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.12em;color:var(--ink-muted);text-transform:uppercase;margin-bottom:8px;padding:0 4px;}
 nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:sec;}
 nav.toc li{counter-increment:sec;}
 nav.toc a{display:flex;justify-content:space-between;gap:8px;color:var(--ink-muted);text-decoration:none;font-size:.82rem;padding:7px 6px 7px 20px;position:relative;border-bottom:1px solid var(--line);}
 nav.toc li:last-child a{border-bottom:none;}
-nav.toc a::before{content:counter(sec,decimal-leading-zero);position:absolute;left:0;top:7px;font-family:'IBM Plex Mono',monospace;color:var(--amber);font-size:.74rem;}
+nav.toc a::before{content:counter(sec,decimal-leading-zero);position:absolute;left:0;top:7px;font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:.74rem;}
 nav.toc a:hover{color:var(--ink);}
-nav.toc .cnt{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--teal);white-space:nowrap;}
+nav.toc .cnt{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--accent);white-space:nowrap;}
 
 main{min-width:0;}
-section{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:clamp(16px,3vw,28px);margin-bottom:22px;scroll-margin-top:20px;}
+section{background:var(--panel);padding:clamp(16px,3vw,28px);margin-bottom:10px;scroll-margin-top:20px;}
 section > .kicker{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
 section > .kicker .left{display:flex;align-items:baseline;gap:12px;}
-section > .kicker .num{font-family:'IBM Plex Mono',monospace;color:var(--amber);font-size:.92rem;}
+section > .kicker .num{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:.92rem;}
 section h2{font-size:clamp(1.3rem,2.6vw,1.7rem);}
 section .kicker .phase-pct{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--ink-muted);}
 section .dek{color:var(--ink-muted);margin:8px 0 18px;max-width:74ch;font-size:.94rem;}
 
-.item{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);}
+.item{display:grid;grid-template-columns:20px 1fr;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);}
 .item:last-child{border-bottom:none;}
-.item input[type=checkbox]{width:18px;height:18px;margin-top:2px;accent-color:var(--good);cursor:pointer;}
+.item .mark{width:16px;height:16px;margin-top:2px;border:2px solid var(--ink-muted);position:relative;}
+.item.done .mark{border-color:var(--accent);background:var(--accent);}
+.item.done .mark::after{content:"";position:absolute;left:2px;top:-1px;width:4px;height:8px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg);}
 .item .title-row{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;}
-.item label{font-weight:600;cursor:pointer;font-size:.97rem;}
-.item.checked label{color:var(--good);text-decoration:line-through;text-decoration-color:var(--line);}
+.item .title{font-weight:600;font-size:.97rem;}
+.item.done .title{color:var(--accent);text-decoration:line-through;text-decoration-color:var(--line);}
 .item p{margin:4px 0 0;color:var(--ink-muted);font-size:.87rem;max-width:66ch;}
-.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.64rem;letter-spacing:.03em;background:var(--tag-bg);color:var(--amber-strong);border:1px solid var(--line);border-radius:3px;padding:1px 6px;white-space:nowrap;}
+.tag{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.64rem;letter-spacing:.03em;background:var(--tag-bg);color:var(--ink-muted);border:1px solid var(--line);padding:1px 6px;white-space:nowrap;}
 .tag.verify{color:var(--danger);}
-.tag.build{color:var(--teal);}
+.tag.build{color:var(--accent);}
+.tag.done{color:var(--accent);border-color:var(--accent);}
 
-.subnote{margin-top:14px;padding:12px 14px;border:1px dashed var(--line);border-radius:3px;background:var(--panel-2);font-size:.88rem;color:var(--ink-muted);}
+.subnote{margin-top:14px;padding:12px 14px;border:1px dashed var(--line);background:var(--panel-2);font-size:.88rem;color:var(--ink-muted);}
 .subnote b{color:var(--ink);}
 
 footer{color:var(--ink-muted);font-size:.8rem;text-align:center;padding:20px 0 6px;}
-footer a{color:var(--teal);}
+footer a{color:var(--accent);}
 </style>
 
 <div class="wrap">
@@ -102,13 +88,13 @@ footer a{color:var(--teal);}
     <div class="masthead-left">
       <div class="eyebrow">Los Santos Ledger &mdash; Implementation Tracker</div>
       <h1>Ledger Build Checklist</h1>
-      <p>qbox is installed, the recipe ran, the database connected, the server boots. Nothing is customized yet. This is the build order from here: check items off as you finish them, in roughly the sequence listed &mdash; each phase leans on the one before it.</p>
+      <p>qbox is installed, the recipe ran, the database connected, the server boots. This is the build order from here: work down the list roughly in sequence &mdash; each phase leans on the one before it. A static snapshot, not a live tracker &mdash; edit this file by hand as items get done.</p>
     </div>
     <div class="progress-card">
-      <div class="pct" id="overallPct">0%</div>
+      <div class="pct">10%</div>
       <div class="lbl">Overall progress</div>
-      <div class="bar"><i id="overallBar"></i></div>
-      <button class="reset-btn" id="resetBtn" type="button">Reset all checks</button>
+      <div class="bar"><i style="width:10%"></i></div>
+      <div class="note">5 / 49 done</div>
     </div>
   </div>
 
@@ -122,53 +108,53 @@ footer a{color:var(--teal);}
     <nav class="toc" aria-label="Phases">
       <div class="label">Phases</div>
       <ol id="tocList">
-        <li><a href="#p0">Foundation check<span class="cnt" data-phase="p0">0/4</span></a></li>
-        <li><a href="#p1">Core life-support<span class="cnt" data-phase="p1">0/9</span></a></li>
-        <li><a href="#p2">World &amp; vehicles<span class="cnt" data-phase="p2">0/6</span></a></li>
-        <li><a href="#p3">Admin placement tool<span class="cnt" data-phase="p3">0/8</span></a></li>
-        <li><a href="#p4">Housing &amp; business ladder<span class="cnt" data-phase="p4">0/6</span></a></li>
-        <li><a href="#p5">Trucking career</span><span class="cnt" data-phase="p5">0/7</span></a></li>
-        <li><a href="#p6">Heists</span><span class="cnt" data-phase="p6">0/5</span></a></li>
-        <li><a href="#p7">Polish &amp; cadence</span><span class="cnt" data-phase="p7">0/5</span></a></li>
+        <li><a href="#p0">Foundation check<span class="cnt">4/4</span></a></li>
+        <li><a href="#p1">Core life-support<span class="cnt">1/9</span></a></li>
+        <li><a href="#p2">World &amp; vehicles<span class="cnt">0/5</span></a></li>
+        <li><a href="#p3">Admin placement tool<span class="cnt">0/8</span></a></li>
+        <li><a href="#p4">Housing &amp; business ladder<span class="cnt">0/6</span></a></li>
+        <li><a href="#p5">Trucking career<span class="cnt">0/7</span></a></li>
+        <li><a href="#p6">Heists<span class="cnt">0/5</span></a></li>
+        <li><a href="#p7">Polish &amp; cadence<span class="cnt">0/5</span></a></li>
       </ol>
     </nav>
 
     <main>
 
       <section id="p0">
-        <div class="kicker"><div class="left"><span class="num">00</span><h2>Foundation check</h2></div><span class="phase-pct" data-phase-pct="p0"></span></div>
+        <div class="kicker"><div class="left"><span class="num">00</span><h2>Foundation check</h2></div><span class="phase-pct">4 / 4 &middot; 100%</span></div>
         <p class="dek">Confirm the base install is actually solid before layering anything on top &mdash; a bad database or resource-start order will bite you three phases from now instead of today.</p>
 
-        <div class="item"><input type="checkbox" id="c-p0-1"><div><div class="title-row"><label for="c-p0-1">Server boots clean with no red errors in console</label><span class="tag">Sanity check</span></div><p>Restart once fresh and read the whole console output, not just the last few lines &mdash; missing dependencies often print early and scroll off.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p0-2"><div><div class="title-row"><label for="c-p0-2">fxmanifest / resource start order is correct</label><span class="tag">Sanity check</span></div><p><span class="mono">oxmysql</span> and <span class="mono">qbx_core</span> need to start before anything that depends on them &mdash; check <span class="mono">server.cfg</span>'s <span class="mono">ensure</span> order matches the qbox recipe's own ordering.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p0-3"><div><div class="title-row"><label for="c-p0-3">You can connect, spawn, and see a default character</label><span class="tag">Sanity check</span></div><p>Even with no customization, confirm you actually load into a playable character, not just an empty world.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p0-4"><div><div class="title-row"><label for="c-p0-4">Take a full backup of the fresh database + server files</label><span class="tag">Sanity check</span></div><p>Do this now, while it's a known-good empty state. Every phase after this gets harder to roll back from.</p></div></div>
+        <div class="item done"><span class="mark"></span><div><div class="title-row"><span class="title">Server boots clean with no red errors in console</span><span class="tag done">Done</span></div><p>Restart once fresh and read the whole console output, not just the last few lines &mdash; missing dependencies often print early and scroll off.</p></div></div>
+        <div class="item done"><span class="mark"></span><div><div class="title-row"><span class="title">fxmanifest / resource start order is correct</span><span class="tag done">Done</span></div><p><span class="mono">oxmysql</span> and <span class="mono">qbx_core</span> need to start before anything that depends on them &mdash; check <span class="mono">server.cfg</span>'s <span class="mono">ensure</span> order matches the qbox recipe's own ordering.</p></div></div>
+        <div class="item done"><span class="mark"></span><div><div class="title-row"><span class="title">You can connect, spawn, and see a default character</span><span class="tag done">Done</span></div><p>Even with no customization, confirm you actually load into a playable character, not just an empty world.</p></div></div>
+        <div class="item done"><span class="mark"></span><div><div class="title-row"><span class="title">Take a full backup of the fresh database + server files</span><span class="tag done">Done</span></div><p>Do this now, while it's a known-good empty state. Every phase after this gets harder to roll back from.</p></div></div>
       </section>
 
       <section id="p1">
-        <div class="kicker"><div class="left"><span class="num">01</span><h2>Core life-support</h2></div><span class="phase-pct" data-phase-pct="p1"></span></div>
+        <div class="kicker"><div class="left"><span class="num">01</span><h2>Core life-support</h2></div><span class="phase-pct">1 / 9 &middot; 11%</span></div>
         <p class="dek">The systems every other feature assumes exist: how you look, how you interact with the world, how you carry things. All of this is "install and configure," not "build from scratch."</p>
 
-        <div class="item"><input type="checkbox" id="c-p1-1"><div><div class="title-row"><label for="c-p1-1">Character creation / appearance editor</label><span class="tag verify">verify current name</span></div><p>First-time creation flow plus a mirror/clothing-store re-edit later. This is the first thing a friend sees when they join &mdash; worth getting right before anything else.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-2"><div><div class="title-row"><label for="c-p1-2">Loading screen</label><span class="tag verify">verify current name</span></div><p>Even a simple branded one (server name, rules link, a loading tip) beats the default &mdash; and it's usually a 20-minute swap once picked.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-3"><div><div class="title-row"><label for="c-p1-3">ox_inventory + hotbar</label><span class="tag">ox_ ecosystem</span></div><p>Item metadata and weight limits here are the foundation every crafting chain (drugs, parts, trucking cargo) in later phases hooks into &mdash; worth configuring weight/slot limits deliberately now.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-4"><div><div class="title-row"><label for="c-p1-4">ox_target interaction</label><span class="tag">ox_ ecosystem</span></div><p>Drives every prop, door, and NPC interaction point you'll add later, including the admin tool in Phase 3.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-5"><div><div class="title-row"><label for="c-p1-5">Phone resource</label><span class="tag verify">verify current name</span></div><p>Even bare-bones (contacts, messages, calls) &mdash; you'll wire banking, dispatch calls, and fence contacts into it in later phases, so pick one before building on top.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-6"><div><div class="title-row"><label for="c-p1-6">Fuel system (ox_fuel or equivalent)</label><span class="tag">ox_ ecosystem</span></div><p>Feeds directly into the economy sinks in your blueprint doc &mdash; fuel cost is one of the small recurring drains that makes cash feel real.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-7"><div><div class="title-row"><label for="c-p1-7">Vehicle indicators / signals / lock toggle</label><span class="tag verify">verify current name</span></div><p>Turn signals, hazards, engine toggle, lock/unlock on a keybind. Small, but it's the difference between "roleplay server" and "singleplayer with friends."</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-8"><div><div class="title-row"><label for="c-p1-8">Emote wheel / animation menu</label><span class="tag verify">verify current name</span></div><p>Wave, sit, lean, hands-up &mdash; the baseline social-RP toolkit. Cheap to add, disproportionately used.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p1-9"><div><div class="title-row"><label for="c-p1-9">Whatever base jobs ship with your qbox recipe</label><span class="tag">Out of the box</span></div><p>Clock in with these first (often something like garbage/mining/delivery starters) purely to confirm job payouts, duty toggles, and the pay-into-bank pipe all work before you build custom jobs on the same pipe.</p></div></div>
+        <div class="item done"><span class="mark"></span><div><div class="title-row"><span class="title">Character creation / appearance editor</span><span class="tag done">Done</span></div><p>Shipped as <span class="mono">z-player-charcreation</span> &mdash; a fully custom Next.js NUI (not qbx_core's built-in flow, <span class="mono">useExternalCharacters = true</span>), driving <span class="mono">illenium-appearance</span>'s exports for the actual body/face/tattoo data. Covers first-time creation; the mirror/clothing-store re-edit later is still open.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Loading screen</span><span class="tag verify">verify current name</span></div><p>Even a simple branded one (server name, rules link, a loading tip) beats the default &mdash; and it's usually a 20-minute swap once picked.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">ox_inventory + hotbar</span><span class="tag">ox_ ecosystem</span></div><p>Item metadata and weight limits here are the foundation every crafting chain (drugs, parts, trucking cargo) in later phases hooks into &mdash; worth configuring weight/slot limits deliberately now.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">ox_target interaction</span><span class="tag">ox_ ecosystem</span></div><p>Drives every prop, door, and NPC interaction point you'll add later, including the admin tool in Phase 3.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Phone resource</span><span class="tag verify">verify current name</span></div><p>Even bare-bones (contacts, messages, calls) &mdash; you'll wire banking, dispatch calls, and fence contacts into it in later phases, so pick one before building on top.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Fuel system (ox_fuel or equivalent)</span><span class="tag">ox_ ecosystem</span></div><p>Feeds directly into the economy sinks in your blueprint doc &mdash; fuel cost is one of the small recurring drains that makes cash feel real.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Vehicle indicators / signals / lock toggle</span><span class="tag verify">verify current name</span></div><p>Turn signals, hazards, engine toggle, lock/unlock on a keybind. Small, but it's the difference between "roleplay server" and "singleplayer with friends."</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Emote wheel / animation menu</span><span class="tag verify">verify current name</span></div><p>Wave, sit, lean, hands-up &mdash; the baseline social-RP toolkit. Cheap to add, disproportionately used.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Whatever base jobs ship with your qbox recipe</span><span class="tag">Out of the box</span></div><p>Clock in with these first (often something like garbage/mining/delivery starters) purely to confirm job payouts, duty toggles, and the pay-into-bank pipe all work before you build custom jobs on the same pipe.</p></div></div>
       </section>
 
       <section id="p2">
-        <div class="kicker"><div class="left"><span class="num">02</span><h2>World &amp; vehicles</h2></div><span class="phase-pct" data-phase-pct="p2"></span></div>
+        <div class="kicker"><div class="left"><span class="num">02</span><h2>World &amp; vehicles</h2></div><span class="phase-pct">0 / 5 &middot; 0%</span></div>
         <p class="dek">Since this is a private friends-only server, you're free to reskin and rebrand without worrying about licensing &mdash; that opens up the "replace" approach, which is far less work than it sounds.</p>
 
-        <div class="item"><input type="checkbox" id="c-p2-1"><div><div class="title-row"><label for="c-p2-1">Decide: replace vs. add-on vehicles</label><span class="tag">Decision</span></div><p><b>Replace</b> packs swap the model on the existing GTA vehicle slot &mdash; every shop entry, spawn command, and script reference kicks on working with zero code changes, at the cost of losing the original vehicle entirely. <b>Add-on</b> packs stream in alongside the originals under new names, which is more flexible but means re-pointing every vehicle shop, garage, and NPC spawn list yourself. For "replace the existing ones with realistic counterparts," replace packs are almost always the right call.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p2-2"><div><div class="title-row"><label for="c-p2-2">Source realistic replacement models by class</label><span class="tag verify">verify current name</span></div><p>Work class-by-class against your existing vehicle shop categories (sedans, sports, SUVs, muscle, trucks &mdash; and the semi/trailer combo you'll need for Phase 5's trucking job) rather than one giant undifferentiated pack, so nothing gets missed.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p2-3"><div><div class="title-row"><label for="c-p2-3">Tune handling.meta for the new models</label><span class="tag">Custom pass</span></div><p>A dropped-in real-badged model with the stock GTA handling underneath still drives like the original car. Worth a deliberate pass per class rather than accepting pack defaults.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p2-4"><div><div class="title-row"><label for="c-p2-4">Add interior MLOs (housing, shops, hangouts)</label><span class="tag verify">verify current name</span></div><p>Prioritize by what Phase 4 needs first: the hotel room / cheap apartment interiors for the bottom of the housing ladder, then business-purchase interiors, then pure social hangout spots.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p2-5"><div><div class="title-row"><label for="c-p2-5">Visual/graphics pass (timecycle, weather, vibrant streaming assets)</label><span class="tag verify">verify current name</span></div><p>Do this after the vehicle and interior passes, not before &mdash; lighting and weather mods are easiest to judge once the world actually has your content in it.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Decide: replace vs. add-on vehicles</span><span class="tag">Decision</span></div><p><b>Replace</b> packs swap the model on the existing GTA vehicle slot &mdash; every shop entry, spawn command, and script reference keeps working with zero code changes, at the cost of losing the original vehicle entirely. <b>Add-on</b> packs stream in alongside the originals under new names, which is more flexible but means re-pointing every vehicle shop, garage, and NPC spawn list yourself. For "replace the existing ones with realistic counterparts," replace packs are almost always the right call.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Source realistic replacement models by class</span><span class="tag verify">verify current name</span></div><p>Work class-by-class against your existing vehicle shop categories (sedans, sports, SUVs, muscle, trucks &mdash; and the semi/trailer combo you'll need for Phase 5's trucking job) rather than one giant undifferentiated pack, so nothing gets missed.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Tune handling.meta for the new models</span><span class="tag">Custom pass</span></div><p>A dropped-in real-badged model with the stock GTA handling underneath still drives like the original car. Worth a deliberate pass per class rather than accepting pack defaults.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Add interior MLOs (housing, shops, hangouts)</span><span class="tag verify">verify current name</span></div><p>Prioritize by what Phase 4 needs first: the hotel room / cheap apartment interiors for the bottom of the housing ladder, then business-purchase interiors, then pure social hangout spots.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Visual/graphics pass (timecycle, weather, vibrant streaming assets)</span><span class="tag verify">verify current name</span></div><p>Do this after the vehicle and interior passes, not before &mdash; lighting and weather mods are easiest to judge once the world actually has your content in it.</p></div></div>
 
         <div class="subnote">
           <b>Benny's Original Motor Works &mdash; direct answer:</b> the building itself (Strawberry, on the map) exists in FiveM because it's part of the base GTA V map, same as it is in singleplayer. But the special customization menu and functional interior that Benny's has in GTA Online was added by the Lowriders DLC as its own bespoke system &mdash; it is <b>not</b> wired up out of the box in qbox, QBCore, or vanilla FiveM. To get a working Benny's, you need a dedicated script (sometimes bundled with an MLO, sometimes standalone) that opens the doors, adds the interaction points, and hooks the unique upgrade menu into your vehicle-mod system. I couldn't run a live search this session to hand you a specific current resource name with confidence &mdash; search the Cfx.re forum or Tebex for "Benny's" scripts before you build one from scratch, since this is a well-worn request in the FiveM scene and something almost certainly exists.
@@ -176,133 +162,68 @@ footer a{color:var(--teal);}
       </section>
 
       <section id="p3">
-        <div class="kicker"><div class="left"><span class="num">03</span><h2>Admin placement tool</h2></div><span class="phase-pct" data-phase-pct="p3"></span></div>
+        <div class="kicker"><div class="left"><span class="num">03</span><h2>Admin placement tool</h2></div><span class="phase-pct">0 / 8 &middot; 0%</span></div>
         <p class="dek">Your own project: an in-game editor so you can select a prop, ped, marker, or zone and reposition/rotate/resize it without fighting AI-generated coordinate math. Worth building early &mdash; you'll use it for every interior, job location, and marker in every phase after this one.</p>
 
-        <div class="item"><input type="checkbox" id="c-p3-1"><div><div class="title-row"><label for="c-p3-1">Entity picker (raycast under crosshair)</label><span class="tag build">Custom build</span></div><p>Client-side raycast from the camera to find the nearest object, ped, or vehicle under the cursor, using natives like <span class="mono">GetEntityPlayerIsFreeAimingAt</span> or a manual ray/hit test against <span class="mono">GetClosestObjectOfType</span> results. This is the entry point for everything else.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-2"><div><div class="title-row"><label for="c-p3-2">Category filter: prop / ped / marker / zone</label><span class="tag build">Custom build</span></div><p>Markers and zones (job blips, trigger areas) aren't real entities, so they need their own selectable representation &mdash; a small always-visible gizmo prop, or highlighted when the tool is active, that maps back to a marker ID in your config.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-3"><div><div class="title-row"><label for="c-p3-3">Move gizmo (translate on X/Y/Z, with a nudge mode)</label><span class="tag build">Custom build</span></div><p>Keybind-driven nudge (arrow keys + modifier for axis, small/large step toggle) is far faster to build and use reliably than a mouse-drag 3D gizmo &mdash; you can add drag later once the keybind version works.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-4"><div><div class="title-row"><label for="c-p3-4">Rotate control (heading + full pitch/roll if needed)</label><span class="tag build">Custom build</span></div><p><span class="mono">SetEntityRotation</span> with a keybind or scroll-wheel step. Most props only need heading; save pitch/roll control for the cases that actually need it.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-5"><div><div class="title-row"><label for="c-p3-5">Resize / scale control</label><span class="tag build">Custom build</span></div><p>Native scale support is limited for many prop types &mdash; you may end up swapping between a few pre-scaled model variants rather than true runtime scaling for some objects. Worth confirming per prop type before assuming free scaling works everywhere.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-6"><div><div class="title-row"><label for="c-p3-6">NUI panel: numeric fine-tune + entity list</label><span class="tag build">Custom build</span></div><p>A small HTML/JS overlay showing exact coordinates/rotation and a searchable list of placed objects &mdash; keybind-only editing gets tedious once you have more than a handful of placed items.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-7"><div><div class="title-row"><label for="c-p3-7">Save/load to database (not just runtime memory)</label><span class="tag build">Custom build</span></div><p>Every placed prop, marker, and NPC needs to persist across server restarts &mdash; write to a table on save, and spawn everything from that table on resource start.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p3-8"><div><div class="title-row"><label for="c-p3-8">Ace-permission gate the whole tool</label><span class="tag build">Custom build</span></div><p>Restrict activation to your admin ace group from day one &mdash; easy to forget until a friend finds the command by accident.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Entity picker (raycast under crosshair)</span><span class="tag build">Custom build</span></div><p>Client-side raycast from the camera to find the nearest object, ped, or vehicle under the cursor, using natives like <span class="mono">GetEntityPlayerIsFreeAimingAt</span> or a manual ray/hit test against <span class="mono">GetClosestObjectOfType</span> results. This is the entry point for everything else.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Category filter: prop / ped / marker / zone</span><span class="tag build">Custom build</span></div><p>Markers and zones (job blips, trigger areas) aren't real entities, so they need their own selectable representation &mdash; a small always-visible gizmo prop, or highlighted when the tool is active, that maps back to a marker ID in your config.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Move gizmo (translate on X/Y/Z, with a nudge mode)</span><span class="tag build">Custom build</span></div><p>Keybind-driven nudge (arrow keys + modifier for axis, small/large step toggle) is far faster to build and use reliably than a mouse-drag 3D gizmo &mdash; you can add drag later once the keybind version works.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Rotate control (heading + full pitch/roll if needed)</span><span class="tag build">Custom build</span></div><p><span class="mono">SetEntityRotation</span> with a keybind or scroll-wheel step. Most props only need heading; save pitch/roll control for the cases that actually need it.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Resize / scale control</span><span class="tag build">Custom build</span></div><p>Native scale support is limited for many prop types &mdash; you may end up swapping between a few pre-scaled model variants rather than true runtime scaling for some objects. Worth confirming per prop type before assuming free scaling works everywhere.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">NUI panel: numeric fine-tune + entity list</span><span class="tag build">Custom build</span></div><p>A small HTML/JS overlay showing exact coordinates/rotation and a searchable list of placed objects &mdash; keybind-only editing gets tedious once you have more than a handful of placed items.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Save/load to database (not just runtime memory)</span><span class="tag build">Custom build</span></div><p>Every placed prop, marker, and NPC needs to persist across server restarts &mdash; write to a table on save, and spawn everything from that table on resource start.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Ace-permission gate the whole tool</span><span class="tag build">Custom build</span></div><p>Restrict activation to your admin ace group from day one &mdash; easy to forget until a friend finds the command by accident.</p></div></div>
       </section>
 
       <section id="p4">
-        <div class="kicker"><div class="left"><span class="num">04</span><h2>Housing &amp; business ladder</h2></div><span class="phase-pct" data-phase-pct="p4"></span></div>
+        <div class="kicker"><div class="left"><span class="num">04</span><h2>Housing &amp; business ladder</h2></div><span class="phase-pct">0 / 6 &middot; 0%</span></div>
         <p class="dek">The bottom-to-top money sink your blueprint doc's economy section depends on: start broke, rent a room, work up to ownership. This is the system that gives early cash somewhere to go.</p>
 
-        <div class="item"><input type="checkbox" id="c-p4-1"><div><div class="title-row"><label for="c-p4-1">Starting cash + starter job wired to bank</label><span class="tag">Config</span></div><p>Small enough that a hotel room is a real decision, not a rounding error &mdash; tune against whatever the cheapest room costs per night.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p4-2"><div><div class="title-row"><label for="c-p4-2">Rentable hotel room tier (nightly/weekly rent, no ownership)</label><span class="tag verify">verify current name</span></div><p>The floor of the housing ladder &mdash; needs basic storage but no furnishing, and should be unrentable-if-unpaid rather than instant eviction, to keep it low-stakes.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p4-3"><div><div class="title-row"><label for="c-p4-3">Apartment tier (owned/leased, storage + furnishing)</label><span class="tag verify">verify current name</span></div><p>First real ownership rung. Confirm the housing script supports tiered rent/mortgage rather than a flat one-size price &mdash; that's what makes the climb feel like a climb.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p4-4"><div><div class="title-row"><label for="c-p4-4">Business purchase system</label><span class="tag verify">verify current name</span></div><p>Needs an ownership record, not just a physical shop &mdash; whoever owns it should be able to lock others out, sell it, or hand it off.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p4-5"><div><div class="title-row"><label for="c-p4-5">Business customization/config (like GTAO's business upgrades)</label><span class="tag build">Custom build</span></div><p>What the business "comes with" and what you can pay to upgrade &mdash; staff slots, production speed, storage capacity. This is closer to Phase 3's admin tool territory (placing shelving, staff NPCs, decor) than an off-the-shelf script.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p4-6"><div><div class="title-row"><label for="c-p4-6">Passive income tick for owned businesses</label><span class="tag build">Custom build</span></div><p>A capped trickle that accrues even offline, per your blueprint doc's design (never out-earning active play) &mdash; a scheduled server-side job that pays out per owned business on an interval.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Starting cash + starter job wired to bank</span><span class="tag">Config</span></div><p>Small enough that a hotel room is a real decision, not a rounding error &mdash; tune against whatever the cheapest room costs per night.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Rentable hotel room tier (nightly/weekly rent, no ownership)</span><span class="tag verify">verify current name</span></div><p>The floor of the housing ladder &mdash; needs basic storage but no furnishing, and should be unrentable-if-unpaid rather than instant eviction, to keep it low-stakes.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Apartment tier (owned/leased, storage + furnishing)</span><span class="tag verify">verify current name</span></div><p>First real ownership rung. Confirm the housing script supports tiered rent/mortgage rather than a flat one-size price &mdash; that's what makes the climb feel like a climb.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Business purchase system</span><span class="tag verify">verify current name</span></div><p>Needs an ownership record, not just a physical shop &mdash; whoever owns it should be able to lock others out, sell it, or hand it off.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Business customization/config (like GTAO's business upgrades)</span><span class="tag build">Custom build</span></div><p>What the business "comes with" and what you can pay to upgrade &mdash; staff slots, production speed, storage capacity. This is closer to Phase 3's admin tool territory (placing shelving, staff NPCs, decor) than an off-the-shelf script.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Passive income tick for owned businesses</span><span class="tag build">Custom build</span></div><p>A capped trickle that accrues even offline, per your blueprint doc's design (never out-earning active play) &mdash; a scheduled server-side job that pays out per owned business on an interval.</p></div></div>
       </section>
 
       <section id="p5">
-        <div class="kicker"><div class="left"><span class="num">05</span><h2>Trucking career</h2></div><span class="phase-pct" data-phase-pct="p5"></span></div>
+        <div class="kicker"><div class="left"><span class="num">05</span><h2>Trucking career</h2></div><span class="phase-pct">0 / 7 &middot; 0%</span></div>
         <p class="dek">Your fully-specced job: deliver goods, level up, unlock longer and riskier routes. Legal freight is the safe income floor; illegal freight is the high-risk, high-reward ceiling.</p>
 
-        <div class="item"><input type="checkbox" id="c-p5-1"><div><div class="title-row"><label for="c-p5-1">Base delivery loop: pick up, haul, drop off, get paid</label><span class="tag build">Custom build</span></div><p>Start with one truck, one trailer type, short routes &mdash; get the core loop solid before adding the leveling and risk layers on top of it.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-2"><div><div class="title-row"><label for="c-p5-2">Job XP/level system tied to completed deliveries</label><span class="tag build">Custom build</span></div><p>Store level + XP per character in its own DB table; gate everything below behind level thresholds rather than unlocking it all at once.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-3"><div><div class="title-row"><label for="c-p5-3">Cargo condition tracking (damage reduces payout)</label><span class="tag build">Custom build</span></div><p>Tie a "cargo health" value to trailer damage events or hard driving &mdash; drops in value on impact, final payout scales off remaining condition at drop-off.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-4"><div><div class="title-row"><label for="c-p5-4">Long-haul tier: longer routes, higher base pay, unlocked by level</label><span class="tag build">Custom build</span></div><p>Legal but slower and further &mdash; the "grind" rung that rewards patience without any risk layer yet.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-5"><div><div class="title-row"><label for="c-p5-5">Illegal freight tier: contraband loads, higher pay ceiling</label><span class="tag build">Custom build</span></div><p>Same delivery loop, different cargo flag &mdash; contraband runs pay more but should trip your dispatch/police-alert system per your blueprint's heat mechanics.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-6"><div><div class="title-row"><label for="c-p5-6">Police/gang interception risk on illegal runs</label><span class="tag build">Custom build</span></div><p>Random or dispatch-triggered ambush points on contraband routes &mdash; ties directly into the same territory/gang-rep systems from Phase 6 and your blueprint's criminal ladder, so build it to read from the same rep values rather than a standalone risk roll.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p5-7"><div><div class="title-row"><label for="c-p5-7">Trailer/cargo variety (flatbed, tanker, reefer, etc.)</label><span class="tag verify">verify current name</span></div><p>Different trailer types can gate different cargo categories (hazardous, refrigerated, oversized) as another progression axis within the job itself.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Base delivery loop: pick up, haul, drop off, get paid</span><span class="tag build">Custom build</span></div><p>Start with one truck, one trailer type, short routes &mdash; get the core loop solid before adding the leveling and risk layers on top of it.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Job XP/level system tied to completed deliveries</span><span class="tag build">Custom build</span></div><p>Store level + XP per character in its own DB table; gate everything below behind level thresholds rather than unlocking it all at once.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Cargo condition tracking (damage reduces payout)</span><span class="tag build">Custom build</span></div><p>Tie a "cargo health" value to trailer damage events or hard driving &mdash; drops in value on impact, final payout scales off remaining condition at drop-off.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Long-haul tier: longer routes, higher base pay, unlocked by level</span><span class="tag build">Custom build</span></div><p>Legal but slower and further &mdash; the "grind" rung that rewards patience without any risk layer yet.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Illegal freight tier: contraband loads, higher pay ceiling</span><span class="tag build">Custom build</span></div><p>Same delivery loop, different cargo flag &mdash; contraband runs pay more but should trip your dispatch/police-alert system per your blueprint's heat mechanics.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Police/gang interception risk on illegal runs</span><span class="tag build">Custom build</span></div><p>Random or dispatch-triggered ambush points on contraband routes &mdash; ties directly into the same territory/gang-rep systems from Phase 6 and your blueprint's criminal ladder, so build it to read from the same rep values rather than a standalone risk roll.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Trailer/cargo variety (flatbed, tanker, reefer, etc.)</span><span class="tag verify">verify current name</span></div><p>Different trailer types can gate different cargo categories (hazardous, refrigerated, oversized) as another progression axis within the job itself.</p></div></div>
       </section>
 
       <section id="p6">
-        <div class="kicker"><div class="left"><span class="num">06</span><h2>Heists</h2></div><span class="phase-pct" data-phase-pct="p6"></span></div>
+        <div class="kicker"><div class="left"><span class="num">06</span><h2>Heists</h2></div><span class="phase-pct">0 / 5 &middot; 0%</span></div>
         <p class="dek">Straight from your blueprint doc's four-tier table &mdash; street, local, major, signature. Build bottom-up; Tier 3&ndash;4 are genuinely bespoke dev work, not something you'll find off the shelf matching your exact numbers.</p>
 
-        <div class="item"><input type="checkbox" id="c-p6-1"><div><div class="title-row"><label for="c-p6-1">Tier 1 &mdash; street-level (store/ATM), 1&ndash;2 crew, minimal prep</label><span class="tag build">Custom build</span></div><p>Build this one first as your template &mdash; prep item check, timed minigame or objective, payout, cooldown. Every later tier reuses this skeleton.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p6-2"><div><div class="title-row"><label for="c-p6-2">Tier 2 &mdash; local (jewelry/armored truck), prep items required</label><span class="tag build">Custom build</span></div><p>Adds a real prep-item gate (thermite, disguises) sourced from Phase 5/6's criminal supply chains once those exist.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p6-3"><div><div class="title-row"><label for="c-p6-3">Tier 3 &mdash; major (bank/cargo ship), multi-stage, 3&ndash;5 crew</label><span class="tag build">Custom build</span></div><p>Multiple linked objectives in one session, raises the city-wide police alert level per your blueprint's dispatch design.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p6-4"><div><div class="title-row"><label for="c-p6-4">Tier 4 &mdash; signature (federal reserve/casino), multi-session setup</label><span class="tag build">Custom build</span></div><p>The big one &mdash; setup missions spread across sessions, full crew loadout, inside contact. Budget this as its own mini-project once Tiers 1&ndash;3 are proven out.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p6-5"><div><div class="title-row"><label for="c-p6-5">Per-head payout scaling + cooldowns wired to all tiers</label><span class="tag build">Custom build</span></div><p>Payout-per-head should shrink as crew size grows (bigger job, not a bigger split) &mdash; build this into the shared heist skeleton once, not per-tier.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Tier 1 &mdash; street-level (store/ATM), 1&ndash;2 crew, minimal prep</span><span class="tag build">Custom build</span></div><p>Build this one first as your template &mdash; prep item check, timed minigame or objective, payout, cooldown. Every later tier reuses this skeleton.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Tier 2 &mdash; local (jewelry/armored truck), prep items required</span><span class="tag build">Custom build</span></div><p>Adds a real prep-item gate (thermite, disguises) sourced from Phase 5/6's criminal supply chains once those exist.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Tier 3 &mdash; major (bank/cargo ship), multi-stage, 3&ndash;5 crew</span><span class="tag build">Custom build</span></div><p>Multiple linked objectives in one session, raises the city-wide police alert level per your blueprint's dispatch design.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Tier 4 &mdash; signature (federal reserve/casino), multi-session setup</span><span class="tag build">Custom build</span></div><p>The big one &mdash; setup missions spread across sessions, full crew loadout, inside contact. Budget this as its own mini-project once Tiers 1&ndash;3 are proven out.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Per-head payout scaling + cooldowns wired to all tiers</span><span class="tag build">Custom build</span></div><p>Payout-per-head should shrink as crew size grows (bigger job, not a bigger split) &mdash; build this into the shared heist skeleton once, not per-tier.</p></div></div>
       </section>
 
       <section id="p7">
-        <div class="kicker"><div class="left"><span class="num">07</span><h2>Polish &amp; cadence</h2></div><span class="phase-pct" data-phase-pct="p7"></span></div>
+        <div class="kicker"><div class="left"><span class="num">07</span><h2>Polish &amp; cadence</h2></div><span class="phase-pct">0 / 5 &middot; 0%</span></div>
         <p class="dek">Not a one-time phase &mdash; revisit this list once the above is playable.</p>
 
-        <div class="item"><input type="checkbox" id="c-p7-1"><div><div class="title-row"><label for="c-p7-1">Full playtest pass with the actual friend group</label><span class="tag">Ongoing</span></div><p>Nothing above substitutes for watching someone who isn't you try to use it cold.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p7-2"><div><div class="title-row"><label for="c-p7-2">Rebalance economy numbers against real playtime data</label><span class="tag">Ongoing</span></div><p>Your blueprint's numbers are a starting draft &mdash; watch actual payout-per-hour once people are playing and adjust.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p7-3"><div><div class="title-row"><label for="c-p7-3">Custom UI pass on borrowed resources</label><span class="tag">Ongoing</span></div><p>You mentioned wanting to re-skin whatever you pull in off the shelf &mdash; do this after function is proven, not before, so you're not re-skinning something you end up replacing.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p7-4"><div><div class="title-row"><label for="c-p7-4">Scheduled crew nights (turf wars, heist events)</label><span class="tag">Ongoing</span></div><p>Per your blueprint's Phase 3 roadmap &mdash; the calendar anchor that keeps a small roster showing up together.</p></div></div>
-        <div class="item"><input type="checkbox" id="c-p7-5"><div><div class="title-row"><label for="c-p7-5">Revisit this checklist and add the next batch</label><span class="tag">Ongoing</span></div><p>This is a living list, not a finish line &mdash; add rows as new ideas come up.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Full playtest pass with the actual friend group</span><span class="tag">Ongoing</span></div><p>Nothing above substitutes for watching someone who isn't you try to use it cold.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Rebalance economy numbers against real playtime data</span><span class="tag">Ongoing</span></div><p>Your blueprint's numbers are a starting draft &mdash; watch actual payout-per-hour once people are playing and adjust.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Custom UI pass on borrowed resources</span><span class="tag">Ongoing</span></div><p>You mentioned wanting to re-skin whatever you pull in off the shelf &mdash; do this after function is proven, not before, so you're not re-skinning something you end up replacing.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Scheduled crew nights (turf wars, heist events)</span><span class="tag">Ongoing</span></div><p>Per your blueprint's Phase 3 roadmap &mdash; the calendar anchor that keeps a small roster showing up together.</p></div></div>
+        <div class="item"><span class="mark"></span><div><div class="title-row"><span class="title">Revisit this checklist and add the next batch</span><span class="tag">Ongoing</span></div><p>This is a living list, not a finish line &mdash; add rows as new ideas come up.</p></div></div>
       </section>
 
     </main>
   </div>
 
-  <footer>Companion to your <a href="https://claude.ai/code/artifact/50edf7c3-a1b7-4181-b7b1-fc0ab08b6947" target="_blank" rel="noopener">Los Santos Ledger</a> systems brief. Checked state saves locally in this browser.</footer>
+  <footer>Companion to your <a href="https://claude.ai/code/artifact/50edf7c3-a1b7-4181-b7b1-fc0ab08b6947" target="_blank" rel="noopener">Los Santos Ledger</a> systems brief. Static reference &mdash; edit this file directly to update progress, it no longer tracks state in the browser.</footer>
 </div>
-
-<script>
-(function(){
-  var KEY_PREFIX = 'ledger-checklist:';
-  var boxes = Array.prototype.slice.call(document.querySelectorAll('.item input[type=checkbox]'));
-
-  function safeGet(id){
-    try { return localStorage.getItem(KEY_PREFIX + id) === '1'; } catch(e){ return false; }
-  }
-  function safeSet(id, val){
-    try {
-      if (val) localStorage.setItem(KEY_PREFIX + id, '1');
-      else localStorage.removeItem(KEY_PREFIX + id);
-    } catch(e){ /* ignore */ }
-  }
-
-  function phaseOf(box){
-    var section = box.closest('section');
-    return section ? section.id : null;
-  }
-
-  function recompute(){
-    var totalAll = 0, doneAll = 0;
-    var perPhase = {};
-    boxes.forEach(function(b){
-      var p = phaseOf(b);
-      if (!perPhase[p]) perPhase[p] = {done:0, total:0};
-      perPhase[p].total++; totalAll++;
-      if (b.checked){ perPhase[p].done++; doneAll++; }
-    });
-    Object.keys(perPhase).forEach(function(p){
-      var d = perPhase[p];
-      var pctEl = document.querySelector('[data-phase-pct="' + p + '"]');
-      var cntEl = document.querySelector('[data-phase="' + p + '"]');
-      var pct = d.total ? Math.round(100 * d.done / d.total) : 0;
-      if (pctEl) pctEl.textContent = d.done + ' / ' + d.total + ' · ' + pct + '%';
-      if (cntEl) cntEl.textContent = d.done + '/' + d.total;
-    });
-    var overallPct = totalAll ? Math.round(100 * doneAll / totalAll) : 0;
-    document.getElementById('overallPct').textContent = overallPct + '%';
-    document.getElementById('overallBar').style.width = overallPct + '%';
-  }
-
-  boxes.forEach(function(b){
-    b.checked = safeGet(b.id);
-    b.closest('.item').classList.toggle('checked', b.checked);
-    b.addEventListener('change', function(){
-      safeSet(b.id, b.checked);
-      b.closest('.item').classList.toggle('checked', b.checked);
-      recompute();
-    });
-  });
-
-  document.getElementById('resetBtn').addEventListener('click', function(){
-    boxes.forEach(function(b){
-      b.checked = false;
-      safeSet(b.id, false);
-      b.closest('.item').classList.remove('checked');
-    });
-    recompute();
-  });
-
-  recompute();
-})();
-</script>
