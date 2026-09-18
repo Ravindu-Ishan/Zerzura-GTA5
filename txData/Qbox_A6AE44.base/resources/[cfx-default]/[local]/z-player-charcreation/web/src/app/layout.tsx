@@ -25,7 +25,8 @@ const display = Barlow_Condensed({
 });
 
 /* Barlow: slightly narrow humanist grotesque - reads cleanly at 12-14px for values,
-   names and body copy, and sits naturally next to Oswald. */
+   names and body copy, and is the same superfamily as Barlow Condensed above, just at
+   a wider default width - a real matched pairing rather than two unrelated fonts. */
 const sans = Barlow({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
