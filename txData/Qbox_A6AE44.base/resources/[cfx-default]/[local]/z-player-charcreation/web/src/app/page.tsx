@@ -35,11 +35,19 @@ export default function Page() {
   const [muted, setMuted] = useState(false);
 
   useEffect(() => {
-    if (!visible) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!visible) {
+      // The bug this fixes: this branch didn't exist before, so becoming hidden (spawning
+      // into the world via closeUiAndSpawn) never actually paused anything - the track just
+      // kept playing underneath gameplay, indefinitely, as if the NUI were still open.
+      audio.pause();
+      return;
+    }
     // Autoplay works unmuted inside FiveM's CEF (confirmed via z-ui-loadingscreen); still
     // caught here rather than left to throw, since `next dev` in a plain browser tab may
     // block it until the user interacts with the page at all.
-    audioRef.current?.play().catch(() => {});
+    audio.play().catch(() => {});
   }, [visible]);
 
   const toggleMuted = () => setMuted((m) => !m);
