@@ -421,8 +421,15 @@ local function setupPreviewCam()
     local loc = Config.PreviewCamera
 
     parkPreviewPed()
+
+    local tStream = GetGameTimer()
     streamPreviewLocation()
+    print(('[bootTiming]   setupPreviewCam streamPreviewLocation: %dms (near-0 confirms the boot '
+        .. 'thread\'s early pre-warm already finished this in the background)'):format(GetGameTimer() - tStream))
+
+    local tSettle = GetGameTimer()
     settlePreviewPed()
+    print(('[bootTiming]   setupPreviewCam settlePreviewPed: %dms'):format(GetGameTimer() - tSettle))
 
     DisplayRadar(false)
 
@@ -464,13 +471,22 @@ end
 local function previewSavedCharacter(citizenId)
     previewPedHidden = false
 
+    -- Broken out into its own [bootTiming] sub-steps (not just one mark for the whole function)
+    -- because this bundles two genuinely different kinds of latency - a server round trip and a
+    -- local model stream-in - and only splitting them tells you which one is actually slow if
+    -- this step is still the bottleneck after the parallel-streaming fix in the boot thread.
+    local t0 = GetGameTimer()
     local clothing, model = lib.callback.await('qbx_core:server:getPreviewPedData', false, citizenId)
+    print(('[bootTiming]   getPreviewPedData round-trip: %dms'):format(GetGameTimer() - t0))
     if not (model and clothing) then
         previewRandomPed()
         return
     end
 
+    local t1 = GetGameTimer()
     lib.requestModel(model)
+    print(('[bootTiming]   model stream-in (%s): %dms'):format(model, GetGameTimer() - t1))
+
     SetPlayerModel(cache.playerId, model)
     pcall(function()
         exports['illenium-appearance']:setPedAppearance(PlayerPedId(), json.decode(clothing))
@@ -482,35 +498,55 @@ local function previewSavedCharacter(citizenId)
     repositionPreviewPed()
 end
 
-local function openSelectScreen()
+---@param bootMark fun(label: string)|nil optional timing hook, only passed on the very first
+---call from the boot thread - see [bootTiming] prints there. Later calls (cancelCreation,
+---after a delete) pass nothing.
+local function openSelectScreen(bootMark)
+    bootMark = bootMark or function() end
+
     -- Black the screen out before anything touches the ped. Model swaps, the teleport and the
     -- brief moment of live physics that settles the ped onto the floor all happen behind this.
     beginPreviewFade()
     parkPreviewPed()
 
+    bootMark('requesting character list from server')
     local characters, maxSlots = lib.callback.await('qbx_core:server:getCharacters', false)
+    bootMark('character list received')
 
     local list = {}
     for i = 1, #characters do
         list[i] = toClientCharacter(characters[i])
     end
 
-    if characters[1] then
+    -- Empty roster: show no ped at all.
+    --
+    -- This used to drop in a random freemode ped. That reads as "here is a character you own"
+    -- on an account that owns none, it isn't the ped you get when you click Create either
+    -- (creation always starts on mp_m_freemode_01), and it costs a model load for something
+    -- with no meaning. The panel on this screen is entirely about creating your first
+    -- character, so the empty room is the honest backdrop - the first ped a new player ever
+    -- sees is the one they're actually building.
+    local hasCharacters = characters[1] ~= nil
+    if hasCharacters then
         previewSavedCharacter(characters[1].citizenid)
-    else
-        -- Empty roster: show no ped at all.
-        --
-        -- This used to drop in a random freemode ped. That reads as "here is a character you
-        -- own" on an account that owns none, it isn't the ped you get when you click Create
-        -- either (creation always starts on mp_m_freemode_01), and it costs a model load for
-        -- something with no meaning. The panel on this screen is entirely about creating your
-        -- first character, so the empty room is the honest backdrop - the first ped a new
-        -- player ever sees is the one they're actually building.
-        previewPedHidden = true
-        applyPreviewPedVisibility()
+        bootMark('saved character appearance applied (server round-trip + model stream-in)')
     end
 
     setupPreviewCam()
+    bootMark('camera set up (world streaming + settle, hopefully already warm)')
+
+    -- Must come AFTER setupPreviewCam(), not before: that function tears down any existing
+    -- camera via destroyPreviewCam(), which unconditionally resets previewPedHidden to false
+    -- and force-shows the ped (the correct behaviour for destroyPreviewCam's main job - right
+    -- before actually spawning the player for real). On the very first call there's no camera
+    -- yet, so that reset is a no-op and this bug stays hidden - but going Creation -> Cancel ->
+    -- Select with an empty roster, a camera already exists, destroyPreviewCam() fires from
+    -- inside setupPreviewCam(), and it silently clobbered the hide decision if that decision
+    -- was made earlier in this function. That's why cancelling out of creation with no saved
+    -- characters used to leave the creation ped standing on the select screen instead of
+    -- hiding it - this ordering is what fixes it.
+    previewPedHidden = not hasCharacters
+    applyPreviewPedVisibility()
 
     SetNuiFocus(true, true)
     SendNUIMessage({ action = 'init', payload = { characters = list, maxSlots = maxSlots } })
@@ -721,13 +757,34 @@ CreateThread(function()
     -- on the preview location before openSelectScreen's server round-trip.
     parkPreviewPed()
 
+    -- Start streaming the preview location's world/collision data NOW, in the background, in
+    -- parallel with everything openSelectScreen is about to do (a getCharacters server round
+    -- trip, then a getPreviewPedData round trip plus a blocking model stream-in inside
+    -- previewSavedCharacter). Previously this only started deep inside setupPreviewCam(), which
+    -- only runs AFTER both of those complete - three genuinely independent sources of latency
+    -- chained strictly one-after-another is what actually produced the reported 10-20 second
+    -- wait, not any single slow step. streamPreviewLocation() is side-effect-safe to call twice:
+    -- by the time setupPreviewCam() calls it again for real, it usually finds everything already
+    -- streamed in and returns in a frame or two instead of waiting out its own 8-second timeout.
+    -- See the [bootTiming] prints below if the wait is still long after this - they'll show
+    -- exactly which stage it's actually going to.
+    CreateThread(streamPreviewLocation)
+
+    local bootStart = GetGameTimer()
+    local function bootMark(label)
+        print(('[bootTiming] %s at +%dms'):format(label, GetGameTimer() - bootStart))
+    end
+    bootMark('parked ped, streaming kicked off')
+
     -- loadscreen.cfg has externalShutdown=true, meaning it will NOT hide itself automatically -
     -- whichever character-creation script is active is expected to do this. Stock qbx_core used
     -- to; now that useExternalCharacters=true disables that, it's on us instead.
     ShutdownLoadingScreen()
     ShutdownLoadingScreenNui()
+    bootMark('loading screen shut down, opening select screen')
 
-    openSelectScreen()
+    openSelectScreen(bootMark)
+    bootMark('select screen open, camera faded in')
 
     -- Mirrors qbx_core's own safety net: SetEntityInvincible alone is unreliable, so keep
     -- re-applying it for as long as we're isolated in the tutorial session.
