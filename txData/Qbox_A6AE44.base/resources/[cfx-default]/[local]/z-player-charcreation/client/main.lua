@@ -157,7 +157,21 @@ end
 ]]
 
 local PREVIEW_STREAM_TIMEOUT = 8000
-local PREVIEW_SETTLE_TIMEOUT = 1500
+-- Was 1500, then 2000. A genuine settle - the ped falling the ~1m that SetEntityCoords lifts it
+-- by (see settlePreviewPed) and coming to rest - measures ~1283ms in real [bootTiming] captures,
+-- so 1500 was under the real figure and 2000 left almost no margin. This is now only a failure
+-- bound: the loop exits the moment the ped has genuinely landed, so a healthy settle never waits
+-- anywhere near this long and raising it costs nothing except on the path that's already broken.
+local PREVIEW_SETTLE_TIMEOUT = 3000
+
+-- How far the ped must actually travel before we believe physics ran at all. A real settle moves
+-- it ~1.0m (it falls the placement lift); a settle where physics never engaged moves it exactly
+-- 0.0m. 5cm sits in the enormous gap between those two and is nowhere near either.
+local SETTLE_MIN_MOVEMENT = 0.05
+
+---Counts every settlePreviewPed() call this session, purely so the [settle] diagnostic can show
+---the real call ORDER across call sites (repositionPreviewPed vs setupPreviewCam).
+local settleCallCount = 0
 
 ---Parks the ped on the preview mark completely inert: no tasks, no collision, no gravity.
 ---Safe and cheap to call at any time, including repeatedly.
@@ -208,39 +222,122 @@ end
 ---then locks it there. This replaces the hand-rolled ground snap: resolving a ped's feet
 ---against arbitrary interior geometry is exactly what the collision solver does, and no
 ---ground-probe native does it as reliably for MLO floors.
-local function settlePreviewPed()
+---@param caller string call-site label, printed by the [settle] diagnostic
+local function settlePreviewPed(caller)
     local loc = Config.PreviewCamera
     local ped = PlayerPedId()
+
+    settleCallCount = settleCallCount + 1
+    local callIndex = settleCallCount
+    local collisionAtEntry = HasCollisionLoadedAroundEntity(ped)
+    local started = GetGameTimer()
+
+    -- Where parkPreviewPed() just left the ped, sampled BEFORE physics is allowed to touch it.
+    -- The whole function now hangs off this reference point - see the movement test below.
+    local parked = GetEntityCoords(ped)
 
     SetEntityCollision(ped, true, true)
     FreezeEntityPosition(ped, false)
 
-    -- Poll for actual ground contact rather than sleeping a fixed amount of time. A ped that
-    -- is already standing satisfies this within a couple of frames; one that has to drop a few
-    -- centimetres onto the floor takes a few more. Either way we stop as soon as it is true,
-    -- instead of guessing a duration.
-    local deadline = GetGameTimer() + PREVIEW_SETTLE_TIMEOUT
+    --[[
+      Why "not moving" is not the same as "standing on the floor".
+
+      The previous two attempts at this both assumed the bad first-boot frame was the ped RESTING
+      on coarse room-shell collision that had streamed in ahead of the real floor, and tried to
+      outwait it (first a minimum observation window, then that window gated behind a one-shot
+      `firstSettleDone` flag). Neither worked, and the [camerafocus] numbers say why - they refute
+      the premise outright. Measured against config.lua's authored pedCoords (-1004.5, -478.51,
+      50.03):
+
+        bad  (first boot)  ped (-1004.500, -478.510, 51.030)  dx +0.0000  dy +0.0000  dz +1.0000
+        good (after cycle) ped (-1004.511, -478.504, 50.018)  dx -0.0110  dy +0.0060  dz -0.0120
+
+      The good frame drifted a centimetre on all three axes - that is a ped that fell, hit a floor
+      and resolved against it, and it confirms the authored coordinate is correct (the real floor
+      is within 1.2cm of it). The bad frame is BIT-EXACT on x and y and a perfectly round +1.0000
+      on z. Geometry does not catch a falling ped without perturbing it at all, and it certainly
+      does not do so at exactly one metre. That is not a resting position - it is the placement
+      offset, untouched.
+
+      SET_ENTITY_COORDS is documented as taking a GROUND-LEVEL z and lifting the entity clear by
+      its own radius so it does not spawn clipped into the surface (the same documented behaviour
+      the setupPreviewCam comment block above relies on to avoid a hand-rolled ground snap). For a
+      freemode ped that lift measures exactly 1.000m here. GetEntityCoords reports the LIFTED
+      position until physics runs and drops it back down. So the ~1m error was never the floor
+      being wrong or late - it is simply the ped never having fallen yet.
+
+      And the old exit test could be satisfied without physics running at all: while the ped is
+      being held pending collision, its velocity is 0 and IsEntityInAir is false, so five
+      consecutive "stable" frames elapse in 22ms flat - which is exactly the figure the bad
+      capture reported. The loop was measuring stillness and calling it groundedness.
+
+      So the test is now positive proof that physics actually engaged: the ped must have MOVED off
+      the parked coordinate. That is a real state signal, in keeping with the rest of this
+      function's polling approach, and it is not a guessed duration or a fragile bit of
+      first-call-only state - which also means it no longer matters which call site happens to run
+      first, the failure mode the `firstSettleDone` flag had. That flag is gone entirely.
+
+      RequestCollisionAtCoord is also re-asserted every tick while we wait, for the same reason
+      streamPreviewLocation does it: it is a per-frame request, not a one-shot, so this keeps
+      pulling the floor in rather than passively hoping it arrives.
+    ]]
+    local deadline = started + PREVIEW_SETTLE_TIMEOUT
     local stableFrames = 0
+    local moved = 0.0
     repeat
         Wait(0)
+        RequestCollisionAtCoord(loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z)
+
+        moved = #(GetEntityCoords(ped) - parked)
         local velocity = GetEntityVelocity(ped)
         if not IsEntityInAir(ped) and math.abs(velocity.z) < 0.02 then
             stableFrames = stableFrames + 1
         else
             stableFrames = 0
         end
-    until stableFrames >= 5 or GetGameTimer() > deadline
+    until (stableFrames >= 5 and moved > SETTLE_MIN_MOVEMENT) or GetGameTimer() > deadline
 
     FreezeEntityPosition(ped, true)
 
-    -- Last-resort guard: if the ped is nowhere near the mark it never found a floor at all
-    -- (streaming gave up). Put it back on the authored coordinate rather than leave it
-    -- somewhere under the map. The threshold is deliberately loose - a legitimate settle is
-    -- centimetres, so anything past 2m is a failure, not a correction.
-    if #(GetEntityCoords(ped) - loc.pedCoords.xyz) > 2.0 then
-        SetEntityCoords(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false, false)
+    local settled = GetEntityCoords(ped)
+    local drift = #(settled - loc.pedCoords.xyz)
+    local correction = 'none'
+
+    -- Two different failures, two different corrections - and both place the ped with
+    -- SET_ENTITY_COORDS_NO_OFFSET, not SET_ENTITY_COORDS. That is the whole point: the offsetting
+    -- variant would re-apply the same ~1m lift we just spent this function resolving, and since
+    -- the ped is frozen again by now nothing would ever resolve it a second time. The no-offset
+    -- variant puts the ped exactly where we ask, which for this authored, feet-on-the-floor
+    -- coordinate is within the 1.2cm the good capture measured - visually identical to a real
+    -- settle.
+    if moved <= SETTLE_MIN_MOVEMENT then
+        -- Physics never engaged inside our budget, so the ped is still sitting at the placement
+        -- lift. Note the old `drift > 2.0` guard below could never catch this: the error is
+        -- exactly 1.0m, comfortably inside a threshold written for "fell through the map".
+        -- Unhandled, this is precisely the too-high camera being chased here.
+        SetEntityCoordsNoOffset(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false)
         SetEntityHeading(ped, loc.pedCoords.w)
+        correction = 'unlifted(no-physics)'
+    elseif drift > 2.0 then
+        -- It moved, but it is nowhere near the mark - it found no floor and kept going. Put it
+        -- back rather than leave it under the map. Deliberately loose: a legitimate settle is
+        -- centimetres, so anything past 2m is a failure, not a correction.
+        SetEntityCoordsNoOffset(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false)
+        SetEntityHeading(ped, loc.pedCoords.w)
+        correction = 'recentred(lost)'
     end
+
+    -- Diagnostic, deliberately left in like the rest of this file's. `moved` is the load-bearing
+    -- number: ~1.0 means the ped really fell onto the floor, ~0.000 means physics never touched it
+    -- and the correction above had to save the frame. `#N from=` shows the real call order across
+    -- call sites, which is the thing that was previously being reasoned about rather than measured.
+    local final = GetEntityCoords(ped)
+    print(('[settle] #%d from=%s elapsed=%dms stable=%d moved=%.3fm collisionAtEntry=%s correction=%s')
+        :format(callIndex, caller or 'unknown', GetGameTimer() - started, stableFrames, moved,
+            tostring(collisionAtEntry), correction))
+    print(('[settle] #%d parked %.3f %.3f %.3f -> final %.3f %.3f %.3f (authored z %.3f, dz %+.4f)')
+        :format(callIndex, parked.x, parked.y, parked.z, final.x, final.y, final.z,
+            loc.pedCoords.z, final.z - loc.pedCoords.z))
 end
 
 ---Re-applies the whole preview placement to whatever ped the player owns *now*.
@@ -250,13 +347,20 @@ end
 ---will be invalid after calling this" - so the replacement ped inherits none of our freeze,
 ---position, heading, collision or visibility state. Not doing this is why the ped was back to
 ---hovering the moment a character was clicked in the list.
-local function repositionPreviewPed()
+---@param caller string|nil call-site label, forwarded to the [settle] diagnostic
+local function repositionPreviewPed(caller)
     parkPreviewPed()
 
     -- Only worth settling if there is something to settle onto; on the very first call the
     -- world has not streamed yet and setupPreviewCam() will do the full sequence right after.
+    --
+    -- Note this settle does NOT decide the camera height even when it does run - setupPreviewCam
+    -- re-parks the ped (re-applying the placement lift) and settles it again, and setCameraFocus
+    -- reads the ped's live position after THAT. The [settle] call order proves it: in the known
+    -- -good capture this call site had already settled the ped moments earlier and
+    -- setupPreviewCam's own settle still took the full ~1283ms to re-drop it.
     if HasCollisionLoadedAroundEntity(PlayerPedId()) then
-        settlePreviewPed()
+        settlePreviewPed(('reposition:%s'):format(caller or 'unknown'))
     end
 end
 
@@ -421,8 +525,17 @@ local function setupPreviewCam()
     local loc = Config.PreviewCamera
 
     parkPreviewPed()
+
+    local tStream = GetGameTimer()
     streamPreviewLocation()
-    settlePreviewPed()
+    print(('[bootTiming]   setupPreviewCam streamPreviewLocation: %dms (near-0 confirms the boot '
+        .. 'thread\'s early pre-warm already finished this in the background)'):format(GetGameTimer() - tStream))
+
+    -- THIS is the settle that decides the camera height: setCameraFocus('default') below reads
+    -- the ped's live position, so whatever this call leaves the ped at is what gets framed.
+    local tSettle = GetGameTimer()
+    settlePreviewPed('setupPreviewCam')
+    print(('[bootTiming]   setupPreviewCam settlePreviewPed: %dms'):format(GetGameTimer() - tSettle))
 
     DisplayRadar(false)
 
@@ -455,7 +568,7 @@ end)
 local function previewRandomPed()
     local model = math.random(2) == 1 and 'mp_m_freemode_01' or 'mp_f_freemode_01'
     exports['illenium-appearance']:setPlayerModel(model)
-    repositionPreviewPed()
+    repositionPreviewPed('previewRandomPed')
 end
 
 ---Loads and displays a specific existing character's actual saved appearance, same callback
@@ -464,13 +577,22 @@ end
 local function previewSavedCharacter(citizenId)
     previewPedHidden = false
 
+    -- Broken out into its own [bootTiming] sub-steps (not just one mark for the whole function)
+    -- because this bundles two genuinely different kinds of latency - a server round trip and a
+    -- local model stream-in - and only splitting them tells you which one is actually slow if
+    -- this step is still the bottleneck after the parallel-streaming fix in the boot thread.
+    local t0 = GetGameTimer()
     local clothing, model = lib.callback.await('qbx_core:server:getPreviewPedData', false, citizenId)
+    print(('[bootTiming]   getPreviewPedData round-trip: %dms'):format(GetGameTimer() - t0))
     if not (model and clothing) then
         previewRandomPed()
         return
     end
 
+    local t1 = GetGameTimer()
     lib.requestModel(model)
+    print(('[bootTiming]   model stream-in (%s): %dms'):format(model, GetGameTimer() - t1))
+
     SetPlayerModel(cache.playerId, model)
     pcall(function()
         exports['illenium-appearance']:setPedAppearance(PlayerPedId(), json.decode(clothing))
@@ -479,38 +601,58 @@ local function previewSavedCharacter(citizenId)
 
     -- SET_PLAYER_MODEL just destroyed the ped we had parked and made a brand new one. Park
     -- the new one too, or it falls/hovers the moment the player clicks a character.
-    repositionPreviewPed()
+    repositionPreviewPed('previewSavedCharacter')
 end
 
-local function openSelectScreen()
+---@param bootMark fun(label: string)|nil optional timing hook, only passed on the very first
+---call from the boot thread - see [bootTiming] prints there. Later calls (cancelCreation,
+---after a delete) pass nothing.
+local function openSelectScreen(bootMark)
+    bootMark = bootMark or function() end
+
     -- Black the screen out before anything touches the ped. Model swaps, the teleport and the
     -- brief moment of live physics that settles the ped onto the floor all happen behind this.
     beginPreviewFade()
     parkPreviewPed()
 
+    bootMark('requesting character list from server')
     local characters, maxSlots = lib.callback.await('qbx_core:server:getCharacters', false)
+    bootMark('character list received')
 
     local list = {}
     for i = 1, #characters do
         list[i] = toClientCharacter(characters[i])
     end
 
-    if characters[1] then
+    -- Empty roster: show no ped at all.
+    --
+    -- This used to drop in a random freemode ped. That reads as "here is a character you own"
+    -- on an account that owns none, it isn't the ped you get when you click Create either
+    -- (creation always starts on mp_m_freemode_01), and it costs a model load for something
+    -- with no meaning. The panel on this screen is entirely about creating your first
+    -- character, so the empty room is the honest backdrop - the first ped a new player ever
+    -- sees is the one they're actually building.
+    local hasCharacters = characters[1] ~= nil
+    if hasCharacters then
         previewSavedCharacter(characters[1].citizenid)
-    else
-        -- Empty roster: show no ped at all.
-        --
-        -- This used to drop in a random freemode ped. That reads as "here is a character you
-        -- own" on an account that owns none, it isn't the ped you get when you click Create
-        -- either (creation always starts on mp_m_freemode_01), and it costs a model load for
-        -- something with no meaning. The panel on this screen is entirely about creating your
-        -- first character, so the empty room is the honest backdrop - the first ped a new
-        -- player ever sees is the one they're actually building.
-        previewPedHidden = true
-        applyPreviewPedVisibility()
+        bootMark('saved character appearance applied (server round-trip + model stream-in)')
     end
 
     setupPreviewCam()
+    bootMark('camera set up (world streaming + settle, hopefully already warm)')
+
+    -- Must come AFTER setupPreviewCam(), not before: that function tears down any existing
+    -- camera via destroyPreviewCam(), which unconditionally resets previewPedHidden to false
+    -- and force-shows the ped (the correct behaviour for destroyPreviewCam's main job - right
+    -- before actually spawning the player for real). On the very first call there's no camera
+    -- yet, so that reset is a no-op and this bug stays hidden - but going Creation -> Cancel ->
+    -- Select with an empty roster, a camera already exists, destroyPreviewCam() fires from
+    -- inside setupPreviewCam(), and it silently clobbered the hide decision if that decision
+    -- was made earlier in this function. That's why cancelling out of creation with no saved
+    -- characters used to leave the creation ped standing on the select screen instead of
+    -- hiding it - this ordering is what fixes it.
+    previewPedHidden = not hasCharacters
+    applyPreviewPedVisibility()
 
     SetNuiFocus(true, true)
     SendNUIMessage({ action = 'init', payload = { characters = list, maxSlots = maxSlots } })
@@ -593,7 +735,7 @@ RegisterNUICallback('setGender', function(data, cb)
     local model = data.gender == 'Female' and 'mp_f_freemode_01' or 'mp_m_freemode_01'
     exports['illenium-appearance']:setPlayerModel(model)
     -- New model == new ped entity, so re-park it (see repositionPreviewPed).
-    repositionPreviewPed()
+    repositionPreviewPed('setGender')
     cb({})
 end)
 
@@ -668,13 +810,24 @@ RegisterNUICallback('submitNewCharacter', function(data, cb)
         return
     end
 
+    -- destroyPreviewCam() - specifically the setPreviewUndressed(false) it triggers - MUST run
+    -- before getPedAppearance(), not after. It's the only thing that puts the ped's actual
+    -- clothes back on. This was previously the other way around, so submitting from the Tattoos
+    -- tab (the last tab, which holds the ped undressed via setPreviewUndressed for its entire
+    -- mount - see that function) silently snapshotted and saved the character in its bare-skin
+    -- UNDRESS_DRAWABLES instead of whatever they were actually wearing. That's the real cause of
+    -- the "character has no body" bug the moment anything elsewhere re-applies the saved
+    -- appearance: one of those bare drawables is DLC-dependent and can silently fail to apply on
+    -- a different client than the one that created the character - see UNDRESS_DRAWABLES's own
+    -- comment on that.
+    destroyPreviewCam()
+
     -- getPedAppearance() reads the ped's current live state (already shaped exactly how
     -- illenium-appearance expects it) - we never hand-build this schema ourselves.
     local appearance = exports['illenium-appearance']:getPedAppearance(PlayerPedId())
     TriggerServerEvent('illenium-appearance:server:saveAppearance', appearance)
 
     cb({ success = true })
-    destroyPreviewCam()
     closeUiAndSpawn(true)
 end)
 
@@ -721,13 +874,34 @@ CreateThread(function()
     -- on the preview location before openSelectScreen's server round-trip.
     parkPreviewPed()
 
+    -- Start streaming the preview location's world/collision data NOW, in the background, in
+    -- parallel with everything openSelectScreen is about to do (a getCharacters server round
+    -- trip, then a getPreviewPedData round trip plus a blocking model stream-in inside
+    -- previewSavedCharacter). Previously this only started deep inside setupPreviewCam(), which
+    -- only runs AFTER both of those complete - three genuinely independent sources of latency
+    -- chained strictly one-after-another is what actually produced the reported 10-20 second
+    -- wait, not any single slow step. streamPreviewLocation() is side-effect-safe to call twice:
+    -- by the time setupPreviewCam() calls it again for real, it usually finds everything already
+    -- streamed in and returns in a frame or two instead of waiting out its own 8-second timeout.
+    -- See the [bootTiming] prints below if the wait is still long after this - they'll show
+    -- exactly which stage it's actually going to.
+    CreateThread(streamPreviewLocation)
+
+    local bootStart = GetGameTimer()
+    local function bootMark(label)
+        print(('[bootTiming] %s at +%dms'):format(label, GetGameTimer() - bootStart))
+    end
+    bootMark('parked ped, streaming kicked off')
+
     -- loadscreen.cfg has externalShutdown=true, meaning it will NOT hide itself automatically -
     -- whichever character-creation script is active is expected to do this. Stock qbx_core used
     -- to; now that useExternalCharacters=true disables that, it's on us instead.
     ShutdownLoadingScreen()
     ShutdownLoadingScreenNui()
+    bootMark('loading screen shut down, opening select screen')
 
-    openSelectScreen()
+    openSelectScreen(bootMark)
+    bootMark('select screen open, camera faded in')
 
     -- Mirrors qbx_core's own safety net: SetEntityInvincible alone is unreliable, so keep
     -- re-applying it for as long as we're isolated in the tutorial session.

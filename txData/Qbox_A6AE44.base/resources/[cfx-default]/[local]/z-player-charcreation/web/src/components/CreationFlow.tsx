@@ -70,7 +70,12 @@ interface ModelRanges {
 
 const DEFAULT_RANGES: ModelRanges = { hairStyleMax: 0, overlayMax: {} };
 
-export default function CreationFlow() {
+interface CreationFlowProps {
+  muted: boolean;
+  onToggleMuted: () => void;
+}
+
+export default function CreationFlow({ muted, onToggleMuted }: CreationFlowProps) {
   const [tab, setTab] = useState<Tab>("details");
   const [details, setDetails] = useState<CharacterDetails>(EMPTY_DETAILS);
   const [headBlend, setHeadBlendState] = useState<HeadBlend>(DEFAULT_HEAD_BLEND);
@@ -181,6 +186,9 @@ export default function CreationFlow() {
               {String(stepIndex).padStart(2, "0")} / {String(TABS.length).padStart(2, "0")}
             </span>
           </span>
+          <button className="chip" onClick={onToggleMuted} aria-pressed={muted}>
+            <Icon name={muted ? "volumeOff" : "volumeOn"} size={13} />
+          </button>
         </>
       }
     >
