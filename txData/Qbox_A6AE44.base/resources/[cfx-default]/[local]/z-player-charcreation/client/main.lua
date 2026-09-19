@@ -157,7 +157,13 @@ end
 ]]
 
 local PREVIEW_STREAM_TIMEOUT = 8000
-local PREVIEW_SETTLE_TIMEOUT = 1500
+-- Was 1500. Bumped for the first-settle minimum-observation-window fix in settlePreviewPed() -
+-- a genuine first-ever settle has been observed taking ~1.3s, so 1500 left almost no margin.
+local PREVIEW_SETTLE_TIMEOUT = 2000
+
+---True once the very first settlePreviewPed() call this client session has completed - see the
+---comment inside that function for why the first call gets different treatment.
+local firstSettleDone = false
 
 ---Parks the ped on the preview mark completely inert: no tasks, no collision, no gravity.
 ---Safe and cheap to call at any time, including repeatedly.
@@ -219,6 +225,24 @@ local function settlePreviewPed()
     -- is already standing satisfies this within a couple of frames; one that has to drop a few
     -- centimetres onto the floor takes a few more. Either way we stop as soon as it is true,
     -- instead of guessing a duration.
+    --
+    -- Confirmed via [camerafocus] diagnostics (real numbers, not a guess): on the very first
+    -- settle of a session - right out of the loading screen - this room's fine floor/furniture
+    -- collision can still be streaming in even though streamPreviewLocation()'s
+    -- HasCollisionLoadedAroundEntity check already reported ready (a coarser, room-shell-level
+    -- signal, not a promise every prop's collision is in). The ped then found itself "stable"
+    -- within 22ms, resting on whatever coarse geometry loaded first - about a metre above the
+    -- true floor in the observed case - instead of the ~1.3 real seconds it took to actually
+    -- fall to the finished floor on every later settle this session, once the room was fully
+    -- resident. So: on the first settle only, don't trust an early "stable" reading - keep
+    -- watching for a minimum real-world window. If the coarse geometry gets replaced by the real
+    -- floor mesh partway through (a normal streaming pattern - the placeholder is swapped, not
+    -- composited under it), physics reacts on its own: the ped starts falling again, the velocity
+    -- check below catches it, and stableFrames resets - so this still polls for real state rather
+    -- than blindly sleeping a guessed duration, it just refuses to stop early the one time that's
+    -- actually mattered.
+    local minStableUntil = firstSettleDone and 0 or (GetGameTimer() + 1000)
+
     local deadline = GetGameTimer() + PREVIEW_SETTLE_TIMEOUT
     local stableFrames = 0
     repeat
@@ -229,8 +253,9 @@ local function settlePreviewPed()
         else
             stableFrames = 0
         end
-    until stableFrames >= 5 or GetGameTimer() > deadline
+    until (stableFrames >= 5 and GetGameTimer() >= minStableUntil) or GetGameTimer() > deadline
 
+    firstSettleDone = true
     FreezeEntityPosition(ped, true)
 
     -- Last-resort guard: if the ped is nowhere near the mark it never found a floor at all
