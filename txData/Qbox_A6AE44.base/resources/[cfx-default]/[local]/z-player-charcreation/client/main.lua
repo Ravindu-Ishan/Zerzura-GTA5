@@ -157,13 +157,21 @@ end
 ]]
 
 local PREVIEW_STREAM_TIMEOUT = 8000
--- Was 1500. Bumped for the first-settle minimum-observation-window fix in settlePreviewPed() -
--- a genuine first-ever settle has been observed taking ~1.3s, so 1500 left almost no margin.
-local PREVIEW_SETTLE_TIMEOUT = 2000
+-- Was 1500, then 2000. A genuine settle - the ped falling the ~1m that SetEntityCoords lifts it
+-- by (see settlePreviewPed) and coming to rest - measures ~1283ms in real [bootTiming] captures,
+-- so 1500 was under the real figure and 2000 left almost no margin. This is now only a failure
+-- bound: the loop exits the moment the ped has genuinely landed, so a healthy settle never waits
+-- anywhere near this long and raising it costs nothing except on the path that's already broken.
+local PREVIEW_SETTLE_TIMEOUT = 3000
 
----True once the very first settlePreviewPed() call this client session has completed - see the
----comment inside that function for why the first call gets different treatment.
-local firstSettleDone = false
+-- How far the ped must actually travel before we believe physics ran at all. A real settle moves
+-- it ~1.0m (it falls the placement lift); a settle where physics never engaged moves it exactly
+-- 0.0m. 5cm sits in the enormous gap between those two and is nowhere near either.
+local SETTLE_MIN_MOVEMENT = 0.05
+
+---Counts every settlePreviewPed() call this session, purely so the [settle] diagnostic can show
+---the real call ORDER across call sites (repositionPreviewPed vs setupPreviewCam).
+local settleCallCount = 0
 
 ---Parks the ped on the preview mark completely inert: no tasks, no collision, no gravity.
 ---Safe and cheap to call at any time, including repeatedly.
@@ -214,58 +222,122 @@ end
 ---then locks it there. This replaces the hand-rolled ground snap: resolving a ped's feet
 ---against arbitrary interior geometry is exactly what the collision solver does, and no
 ---ground-probe native does it as reliably for MLO floors.
-local function settlePreviewPed()
+---@param caller string call-site label, printed by the [settle] diagnostic
+local function settlePreviewPed(caller)
     local loc = Config.PreviewCamera
     local ped = PlayerPedId()
+
+    settleCallCount = settleCallCount + 1
+    local callIndex = settleCallCount
+    local collisionAtEntry = HasCollisionLoadedAroundEntity(ped)
+    local started = GetGameTimer()
+
+    -- Where parkPreviewPed() just left the ped, sampled BEFORE physics is allowed to touch it.
+    -- The whole function now hangs off this reference point - see the movement test below.
+    local parked = GetEntityCoords(ped)
 
     SetEntityCollision(ped, true, true)
     FreezeEntityPosition(ped, false)
 
-    -- Poll for actual ground contact rather than sleeping a fixed amount of time. A ped that
-    -- is already standing satisfies this within a couple of frames; one that has to drop a few
-    -- centimetres onto the floor takes a few more. Either way we stop as soon as it is true,
-    -- instead of guessing a duration.
-    --
-    -- Confirmed via [camerafocus] diagnostics (real numbers, not a guess): on the very first
-    -- settle of a session - right out of the loading screen - this room's fine floor/furniture
-    -- collision can still be streaming in even though streamPreviewLocation()'s
-    -- HasCollisionLoadedAroundEntity check already reported ready (a coarser, room-shell-level
-    -- signal, not a promise every prop's collision is in). The ped then found itself "stable"
-    -- within 22ms, resting on whatever coarse geometry loaded first - about a metre above the
-    -- true floor in the observed case - instead of the ~1.3 real seconds it took to actually
-    -- fall to the finished floor on every later settle this session, once the room was fully
-    -- resident. So: on the first settle only, don't trust an early "stable" reading - keep
-    -- watching for a minimum real-world window. If the coarse geometry gets replaced by the real
-    -- floor mesh partway through (a normal streaming pattern - the placeholder is swapped, not
-    -- composited under it), physics reacts on its own: the ped starts falling again, the velocity
-    -- check below catches it, and stableFrames resets - so this still polls for real state rather
-    -- than blindly sleeping a guessed duration, it just refuses to stop early the one time that's
-    -- actually mattered.
-    local minStableUntil = firstSettleDone and 0 or (GetGameTimer() + 1000)
+    --[[
+      Why "not moving" is not the same as "standing on the floor".
 
-    local deadline = GetGameTimer() + PREVIEW_SETTLE_TIMEOUT
+      The previous two attempts at this both assumed the bad first-boot frame was the ped RESTING
+      on coarse room-shell collision that had streamed in ahead of the real floor, and tried to
+      outwait it (first a minimum observation window, then that window gated behind a one-shot
+      `firstSettleDone` flag). Neither worked, and the [camerafocus] numbers say why - they refute
+      the premise outright. Measured against config.lua's authored pedCoords (-1004.5, -478.51,
+      50.03):
+
+        bad  (first boot)  ped (-1004.500, -478.510, 51.030)  dx +0.0000  dy +0.0000  dz +1.0000
+        good (after cycle) ped (-1004.511, -478.504, 50.018)  dx -0.0110  dy +0.0060  dz -0.0120
+
+      The good frame drifted a centimetre on all three axes - that is a ped that fell, hit a floor
+      and resolved against it, and it confirms the authored coordinate is correct (the real floor
+      is within 1.2cm of it). The bad frame is BIT-EXACT on x and y and a perfectly round +1.0000
+      on z. Geometry does not catch a falling ped without perturbing it at all, and it certainly
+      does not do so at exactly one metre. That is not a resting position - it is the placement
+      offset, untouched.
+
+      SET_ENTITY_COORDS is documented as taking a GROUND-LEVEL z and lifting the entity clear by
+      its own radius so it does not spawn clipped into the surface (the same documented behaviour
+      the setupPreviewCam comment block above relies on to avoid a hand-rolled ground snap). For a
+      freemode ped that lift measures exactly 1.000m here. GetEntityCoords reports the LIFTED
+      position until physics runs and drops it back down. So the ~1m error was never the floor
+      being wrong or late - it is simply the ped never having fallen yet.
+
+      And the old exit test could be satisfied without physics running at all: while the ped is
+      being held pending collision, its velocity is 0 and IsEntityInAir is false, so five
+      consecutive "stable" frames elapse in 22ms flat - which is exactly the figure the bad
+      capture reported. The loop was measuring stillness and calling it groundedness.
+
+      So the test is now positive proof that physics actually engaged: the ped must have MOVED off
+      the parked coordinate. That is a real state signal, in keeping with the rest of this
+      function's polling approach, and it is not a guessed duration or a fragile bit of
+      first-call-only state - which also means it no longer matters which call site happens to run
+      first, the failure mode the `firstSettleDone` flag had. That flag is gone entirely.
+
+      RequestCollisionAtCoord is also re-asserted every tick while we wait, for the same reason
+      streamPreviewLocation does it: it is a per-frame request, not a one-shot, so this keeps
+      pulling the floor in rather than passively hoping it arrives.
+    ]]
+    local deadline = started + PREVIEW_SETTLE_TIMEOUT
     local stableFrames = 0
+    local moved = 0.0
     repeat
         Wait(0)
+        RequestCollisionAtCoord(loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z)
+
+        moved = #(GetEntityCoords(ped) - parked)
         local velocity = GetEntityVelocity(ped)
         if not IsEntityInAir(ped) and math.abs(velocity.z) < 0.02 then
             stableFrames = stableFrames + 1
         else
             stableFrames = 0
         end
-    until (stableFrames >= 5 and GetGameTimer() >= minStableUntil) or GetGameTimer() > deadline
+    until (stableFrames >= 5 and moved > SETTLE_MIN_MOVEMENT) or GetGameTimer() > deadline
 
-    firstSettleDone = true
     FreezeEntityPosition(ped, true)
 
-    -- Last-resort guard: if the ped is nowhere near the mark it never found a floor at all
-    -- (streaming gave up). Put it back on the authored coordinate rather than leave it
-    -- somewhere under the map. The threshold is deliberately loose - a legitimate settle is
-    -- centimetres, so anything past 2m is a failure, not a correction.
-    if #(GetEntityCoords(ped) - loc.pedCoords.xyz) > 2.0 then
-        SetEntityCoords(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false, false)
+    local settled = GetEntityCoords(ped)
+    local drift = #(settled - loc.pedCoords.xyz)
+    local correction = 'none'
+
+    -- Two different failures, two different corrections - and both place the ped with
+    -- SET_ENTITY_COORDS_NO_OFFSET, not SET_ENTITY_COORDS. That is the whole point: the offsetting
+    -- variant would re-apply the same ~1m lift we just spent this function resolving, and since
+    -- the ped is frozen again by now nothing would ever resolve it a second time. The no-offset
+    -- variant puts the ped exactly where we ask, which for this authored, feet-on-the-floor
+    -- coordinate is within the 1.2cm the good capture measured - visually identical to a real
+    -- settle.
+    if moved <= SETTLE_MIN_MOVEMENT then
+        -- Physics never engaged inside our budget, so the ped is still sitting at the placement
+        -- lift. Note the old `drift > 2.0` guard below could never catch this: the error is
+        -- exactly 1.0m, comfortably inside a threshold written for "fell through the map".
+        -- Unhandled, this is precisely the too-high camera being chased here.
+        SetEntityCoordsNoOffset(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false)
         SetEntityHeading(ped, loc.pedCoords.w)
+        correction = 'unlifted(no-physics)'
+    elseif drift > 2.0 then
+        -- It moved, but it is nowhere near the mark - it found no floor and kept going. Put it
+        -- back rather than leave it under the map. Deliberately loose: a legitimate settle is
+        -- centimetres, so anything past 2m is a failure, not a correction.
+        SetEntityCoordsNoOffset(ped, loc.pedCoords.x, loc.pedCoords.y, loc.pedCoords.z, false, false, false)
+        SetEntityHeading(ped, loc.pedCoords.w)
+        correction = 'recentred(lost)'
     end
+
+    -- Diagnostic, deliberately left in like the rest of this file's. `moved` is the load-bearing
+    -- number: ~1.0 means the ped really fell onto the floor, ~0.000 means physics never touched it
+    -- and the correction above had to save the frame. `#N from=` shows the real call order across
+    -- call sites, which is the thing that was previously being reasoned about rather than measured.
+    local final = GetEntityCoords(ped)
+    print(('[settle] #%d from=%s elapsed=%dms stable=%d moved=%.3fm collisionAtEntry=%s correction=%s')
+        :format(callIndex, caller or 'unknown', GetGameTimer() - started, stableFrames, moved,
+            tostring(collisionAtEntry), correction))
+    print(('[settle] #%d parked %.3f %.3f %.3f -> final %.3f %.3f %.3f (authored z %.3f, dz %+.4f)')
+        :format(callIndex, parked.x, parked.y, parked.z, final.x, final.y, final.z,
+            loc.pedCoords.z, final.z - loc.pedCoords.z))
 end
 
 ---Re-applies the whole preview placement to whatever ped the player owns *now*.
@@ -275,13 +347,20 @@ end
 ---will be invalid after calling this" - so the replacement ped inherits none of our freeze,
 ---position, heading, collision or visibility state. Not doing this is why the ped was back to
 ---hovering the moment a character was clicked in the list.
-local function repositionPreviewPed()
+---@param caller string|nil call-site label, forwarded to the [settle] diagnostic
+local function repositionPreviewPed(caller)
     parkPreviewPed()
 
     -- Only worth settling if there is something to settle onto; on the very first call the
     -- world has not streamed yet and setupPreviewCam() will do the full sequence right after.
+    --
+    -- Note this settle does NOT decide the camera height even when it does run - setupPreviewCam
+    -- re-parks the ped (re-applying the placement lift) and settles it again, and setCameraFocus
+    -- reads the ped's live position after THAT. The [settle] call order proves it: in the known
+    -- -good capture this call site had already settled the ped moments earlier and
+    -- setupPreviewCam's own settle still took the full ~1283ms to re-drop it.
     if HasCollisionLoadedAroundEntity(PlayerPedId()) then
-        settlePreviewPed()
+        settlePreviewPed(('reposition:%s'):format(caller or 'unknown'))
     end
 end
 
@@ -452,8 +531,10 @@ local function setupPreviewCam()
     print(('[bootTiming]   setupPreviewCam streamPreviewLocation: %dms (near-0 confirms the boot '
         .. 'thread\'s early pre-warm already finished this in the background)'):format(GetGameTimer() - tStream))
 
+    -- THIS is the settle that decides the camera height: setCameraFocus('default') below reads
+    -- the ped's live position, so whatever this call leaves the ped at is what gets framed.
     local tSettle = GetGameTimer()
-    settlePreviewPed()
+    settlePreviewPed('setupPreviewCam')
     print(('[bootTiming]   setupPreviewCam settlePreviewPed: %dms'):format(GetGameTimer() - tSettle))
 
     DisplayRadar(false)
@@ -487,7 +568,7 @@ end)
 local function previewRandomPed()
     local model = math.random(2) == 1 and 'mp_m_freemode_01' or 'mp_f_freemode_01'
     exports['illenium-appearance']:setPlayerModel(model)
-    repositionPreviewPed()
+    repositionPreviewPed('previewRandomPed')
 end
 
 ---Loads and displays a specific existing character's actual saved appearance, same callback
@@ -520,7 +601,7 @@ local function previewSavedCharacter(citizenId)
 
     -- SET_PLAYER_MODEL just destroyed the ped we had parked and made a brand new one. Park
     -- the new one too, or it falls/hovers the moment the player clicks a character.
-    repositionPreviewPed()
+    repositionPreviewPed('previewSavedCharacter')
 end
 
 ---@param bootMark fun(label: string)|nil optional timing hook, only passed on the very first
@@ -654,7 +735,7 @@ RegisterNUICallback('setGender', function(data, cb)
     local model = data.gender == 'Female' and 'mp_f_freemode_01' or 'mp_m_freemode_01'
     exports['illenium-appearance']:setPlayerModel(model)
     -- New model == new ped entity, so re-park it (see repositionPreviewPed).
-    repositionPreviewPed()
+    repositionPreviewPed('setGender')
     cb({})
 end)
 
