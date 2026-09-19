@@ -704,13 +704,24 @@ RegisterNUICallback('submitNewCharacter', function(data, cb)
         return
     end
 
+    -- destroyPreviewCam() - specifically the setPreviewUndressed(false) it triggers - MUST run
+    -- before getPedAppearance(), not after. It's the only thing that puts the ped's actual
+    -- clothes back on. This was previously the other way around, so submitting from the Tattoos
+    -- tab (the last tab, which holds the ped undressed via setPreviewUndressed for its entire
+    -- mount - see that function) silently snapshotted and saved the character in its bare-skin
+    -- UNDRESS_DRAWABLES instead of whatever they were actually wearing. That's the real cause of
+    -- the "character has no body" bug the moment anything elsewhere re-applies the saved
+    -- appearance: one of those bare drawables is DLC-dependent and can silently fail to apply on
+    -- a different client than the one that created the character - see UNDRESS_DRAWABLES's own
+    -- comment on that.
+    destroyPreviewCam()
+
     -- getPedAppearance() reads the ped's current live state (already shaped exactly how
     -- illenium-appearance expects it) - we never hand-build this schema ourselves.
     local appearance = exports['illenium-appearance']:getPedAppearance(PlayerPedId())
     TriggerServerEvent('illenium-appearance:server:saveAppearance', appearance)
 
     cb({ success = true })
-    destroyPreviewCam()
     closeUiAndSpawn(true)
 end)
 
