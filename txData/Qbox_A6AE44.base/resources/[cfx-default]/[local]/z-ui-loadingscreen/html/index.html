@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zerzura</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="main.css" />
+</head>
+<body>
+
+  <div class="welcome">
+    <div class="welcome-eyebrow">Welcome to</div>
+    <div class="welcome-title">Zerzura</div>
+    <div class="welcome-sub">Los Santos Roleplay</div>
+    <div class="welcome-status" id="status">Loading the city&hellip;</div>
+  </div>
+
+  <div class="logo-wrap">
+    <img src="assets/logo.png" alt="Zerzura" class="logo" />
+  </div>
+
+  <div class="progress">
+    <div class="progress-pct t-num" id="pct">0%</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="fill"></div>
+    </div>
+  </div>
+
+  <button class="mute-btn" id="muteBtn" type="button" aria-label="Toggle background music" aria-pressed="false">
+    <svg id="iconOn" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square">
+      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+      <path d="M16.2 8.8a5 5 0 0 1 0 6.4" />
+      <path d="M18.6 6.4a8.5 8.5 0 0 1 0 11.2" />
+    </svg>
+    <svg id="iconOff" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" hidden>
+      <path d="M4 9v6h4l5 4V5L8 9H4z" />
+      <path d="M16.5 9.5l5.5 5" />
+      <path d="M22 9.5l-5.5 5" />
+    </svg>
+  </button>
+
+  <!-- Drop a licensed/royalty-free track here as audio/theme.mp3 (or .ogg). Playback fails
+       silently if the file doesn't exist yet - see main.js. -->
+  <audio id="bgAudio" loop preload="auto">
+    <source src="audio/theme.mp3" type="audio/mpeg" />
+    <source src="audio/theme.ogg" type="audio/ogg" />
+  </audio>
+
+  <script src="main.js"></script>
+</body>
+</html>

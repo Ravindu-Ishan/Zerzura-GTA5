@@ -1,0 +1,166 @@
+/* Zerzura loading screen.
+   Plain CSS, not the shared globals.css from z-player-charcreation/web - this is a standalone
+   static page (see fxmanifest.lua for why), so the ui-theme-guide.md tokens are hand-applied
+   here rather than inherited. Kept deliberately monochrome (black/white/grey, no teal accent):
+   this screen is a logo-forward splash built around the black-and-white Z mark, distinct from
+   the teal in-game HUD elsewhere - the same way a game's boot/logo screen is often its own
+   moment rather than sharing the in-game palette. Still follows every other rule in the guide:
+   zero radius, no shadows/gradients, tight tracking, flat fills. */
+
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0b0d; /* matches assets/logo.png's own baked-in background exactly - no seam */
+  color: #ffffff;
+  font-family: 'Barlow', system-ui, sans-serif;
+  user-select: none;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+/* ---------- Welcome block (left side) ---------- */
+
+.welcome {
+  position: fixed;
+  left: 6vw;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 380px;
+}
+
+.welcome-eyebrow {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.35);
+  margin-bottom: 10px;
+}
+
+.welcome-title {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: clamp(40px, 5.5vw, 68px);
+  line-height: 0.95;
+  letter-spacing: 0.005em; /* almost solid - see ui-theme-guide.md 3.4 */
+  color: #ffffff;
+}
+
+.welcome-sub {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.12em; /* the one tracked display item, same convention as the wordmark */
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 10px;
+}
+
+.welcome-status {
+  font-family: 'Barlow', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 30px;
+  animation: zx-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes zx-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-status { animation: none; }
+}
+
+/* ---------- Logo (centre) ---------- */
+
+.logo-wrap {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.logo {
+  display: block;
+  width: clamp(120px, 13vw, 220px);
+  height: auto;
+}
+
+/* ---------- Progress bar (bottom centre, NOT full width) ---------- */
+
+.progress {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  width: clamp(280px, 28vw, 460px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-pct {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12); /* hairline track, matches the guide's slider pattern */
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #ffffff; /* flat white fill - literal "black and white" bar, no gradient/glow */
+  transition: width 160ms linear;
+}
+
+/* ---------- Mute toggle (top-right) ---------- */
+
+.mute-btn {
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 110ms linear, color 110ms linear;
+}
+
+.mute-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.mute-btn[aria-pressed="true"] {
+  color: rgba(255, 255, 255, 0.3);
+}
