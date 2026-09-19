@@ -141,6 +141,19 @@ const PATHS: Record<string, JSX.Element> = {
   ),
   back: <path d="M19 12H5M11 6l-6 6 6 6" />,
   chevronRight: <path d="m9 5 7 7-7 7" />,
+  volumeOn: (
+    <>
+      <path d="M4 9.5v5h3.5l5 4v-13l-5 4H4Z" />
+      <path d="M16.5 9a4 4 0 0 1 0 6" />
+      <path d="M18.7 6.5a7.5 7.5 0 0 1 0 11" />
+    </>
+  ),
+  volumeOff: (
+    <>
+      <path d="M4 9.5v5h3.5l5 4v-13l-5 4H4Z" />
+      <path d="M16 9.5l5 5M21 9.5l-5 5" />
+    </>
+  ),
   alert: (
     <>
       <circle cx="12" cy="12" r="8.5" />

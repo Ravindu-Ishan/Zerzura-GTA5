@@ -17,6 +17,8 @@ export interface CharacterSummary {
 interface SelectScreenProps {
   characters: CharacterSummary[];
   maxSlots: number;
+  muted: boolean;
+  onToggleMuted: () => void;
 }
 
 /**
@@ -42,7 +44,7 @@ interface SelectScreenProps {
  */
 const PANEL_WIDTH = 520;
 
-export default function SelectScreen({ characters, maxSlots }: SelectScreenProps) {
+export default function SelectScreen({ characters, maxSlots, muted, onToggleMuted }: SelectScreenProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Held as an id rather than a boolean so that when Lua re-sends `init` after a delete and
   // this list comes back shorter, the confirm state can't survive on a character that's gone.
@@ -88,6 +90,9 @@ export default function SelectScreen({ characters, maxSlots }: SelectScreenProps
             </span>
             Slots
           </span>
+          <button className="chip" onClick={onToggleMuted} aria-pressed={muted}>
+            <Icon name={muted ? "volumeOff" : "volumeOn"} size={13} />
+          </button>
         </>
       }
     >
