@@ -44,3 +44,7 @@ node_modules/
 
 # Database backups (large, contain player data - never commit)
 /database/backups/
+
+# Local-only resource backups (e.g. pristine vendor copies kept until a fork/reskin
+# is confirmed working) - safety net on disk, never meant to be tracked
+/backups/
