@@ -35,6 +35,8 @@ local Clothing = require 'modules.clothing.shared'
 local Inventory = require 'modules.inventory.server'
 local Items = require 'modules.items.server'
 
+local Module = {}
+
 ---In-memory fallback for frameworks whose bridge cannot persist metadata. The
 ---records still work for the session; they are simply lost on relog.
 local memory = {}
@@ -173,10 +175,31 @@ local function equip(inv, payload)
 	return { key = variation.key, record = record }
 end
 
+---A preferred destination slot, as sent by a drag of the equipped tile onto a
+---specific inventory square. Purely cosmetic - Inventory.AddItem falls back to
+---its own search when the slot is taken - but it MUST be range-checked here.
+---AddItem will happily write to `inv.items[slot]` for any slot number it finds
+---empty, including one past `inv.slots`, which would park the item in a square
+---the player can never see or reach.
 ---@param inv OxInventory
----@param key string
-local function unequip(inv, key)
+---@param value any
+---@return number?
+local function sanitiseTargetSlot(inv, value)
+	if type(value) ~= 'number' then return end
+	if value ~= math.floor(value) then return end
+	if value < 1 or value > inv.slots then return end
+
+	return value
+end
+
+---@param inv OxInventory
+---@param payload string | { key: string, slot: number? } slot key, or the key plus a preferred destination slot
+local function unequip(inv, payload)
+	local key = type(payload) == 'table' and payload.key or payload
+
 	if type(key) ~= 'string' then return end
+
+	local targetSlot = type(payload) == 'table' and sanitiseTargetSlot(inv, payload.slot) or nil
 
 	local slotDef = Clothing.byKey[key]
 
@@ -212,7 +235,7 @@ local function unequip(inv, key)
 		return
 	end
 
-	if not Inventory.AddItem(inv, record.item, 1, record.metadata) then
+	if not Inventory.AddItem(inv, record.item, 1, record.metadata, targetSlot) then
 		notify(inv.id, ('You have no room to carry your %s.'):format(record.label or record.item))
 		return
 	end
@@ -252,9 +275,15 @@ lib.callback.register('ox_inventory:clothing:equip', function(source, payload)
 end)
 
 ---Take it off the ped and put the same item back in the bag.
+---
+---`payload` is either the bare slot key (right-click -> Unequip, which has no
+---opinion about where the item lands) or `{ key = ..., slot = ... }` when the
+---tile was dragged onto a specific inventory square. The slot is a preference,
+---not an instruction: it is range-checked above and then handed to AddItem,
+---which ignores it if that square is occupied.
 ---@return table? instruction telling the client what to revert this slot to
-lib.callback.register('ox_inventory:clothing:unequip', function(source, key)
-	return guarded(source, unequip, key)
+lib.callback.register('ox_inventory:clothing:unequip', function(source, payload)
+	return guarded(source, unequip, payload)
 end)
 
 ---Re-apply on spawn / after an ox_inventory restart.
@@ -265,3 +294,72 @@ lib.callback.register('ox_inventory:clothing:getEquipped', function(source)
 
 	return loadRecords(inv)
 end)
+
+-----------------------------------------------------------------------------------------------
+-- Starter kit
+-----------------------------------------------------------------------------------------------
+
+--[[
+	A character's first-ever load gets one real garment for each of the three
+	always-worn slots (see Clothing.starter in shared.lua for why those three).
+
+	This is free item creation, so it is the one place in this module where
+	getting the bookkeeping wrong is a duplication exploit rather than an
+	inconvenience: anything keyed off "is this player loading in" repeats every
+	single relog. The protection is a persistent per-character flag, and the
+	ordering around it is deliberate:
+
+	  1. Read the flag. Set -> return immediately, nothing happens.
+	  2. CLAIM the flag, and bail if the framework will not promise to store it
+	     (server.setPlayerFlag returns false). On qbx this also queues the
+	     player row's database write there and then, rather than leaving the
+	     value to the next periodic save.
+	  3. Only then create the items.
+
+	Claiming before creating is the fail-safe direction, and it is a direction
+	rather than a lock - no framework here offers a transaction across "player
+	metadata" and "inventory contents". What it buys is that the only crash
+	window that exists costs the character their free clothes (annoying, fixable
+	with /giveitem) instead of handing out another set on every subsequent
+	login, forever. The flag write is dispatched immediately while the items are
+	only persisted by ox_inventory's own periodic inventory save, so losing the
+	items but keeping the flag is the likely failure and the reverse effectively
+	cannot happen. Never trade a dupe for a convenience.
+
+	Existing characters have no flag, so they are backfilled once on their next
+	login. That is intended - they are in exactly the same position as a new
+	character, wearing clothes no item backs.
+]]
+
+local STARTER_FLAG = 'starterClothingGranted'
+
+---@param inv OxInventory
+function Module.grantStarterKit(inv)
+	if not inv?.player then return end
+
+	-- Already has them (or already had them and threw them away). Either way,
+	-- this character has been paid out.
+	if server.getPlayerFlag(inv, STARTER_FLAG) then return end
+
+	-- Fail-closed: a framework that cannot store the flag must not be given
+	-- items, because it would be given them again on every relog.
+	if not server.setPlayerFlag(inv, STARTER_FLAG, true) then
+		return warn(('cannot record a starter clothing grant for inventory-%s, so none was made'):format(inv.id))
+	end
+
+	for i = 1, #Clothing.starter do
+		local name = Clothing.starter[i]
+
+		if not Items(name) then
+			warn(('starter clothing item "%s" does not exist and was skipped'):format(name))
+		else
+			local ok, response = Inventory.AddItem(inv, name, 1)
+
+			if not ok then
+				warn(('failed to give starter clothing "%s" to inventory-%s (%s)'):format(name, inv.id, response))
+			end
+		end
+	end
+end
+
+return Module
